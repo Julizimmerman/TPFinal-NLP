@@ -59,8 +59,8 @@ async def execute_step(state: PlanExecute):
         if context != "Esta es una nueva conversación.":
             context_info = f"\n\nContexto de conversación:\n{context}"
     
-    task_formatted = f"""For the following plan:
-        {plan_str}\n\nYou are tasked with executing step 1, {task}.{context_info}"""
+    task_formatted = f"""Para el siguiente plan:
+        {plan_str}\n\nTu tarea es ejecutar el paso 1, {task}.{context_info}"""
     print(f"🔄 [DEBUG] Tarea formateada: {task_formatted}")
     print("🔄 [DEBUG] Invocando agent_executor...")
     
@@ -152,8 +152,8 @@ async def replan_or_finish(state: PlanExecute):
         )).content
         print(f"🔄 [DEBUG] Respuesta del replanner: {reply}")
 
-        if reply.startswith("RESPONSE:"):
-            response = reply[len("RESPONSE:"):].strip()
+        if reply.startswith("RESPUESTA:"):
+            response = reply[len("RESPUESTA:"):].strip()
             result = {"response": response}
             print(f"🔄 [DEBUG] Finalizando con respuesta: {result}")
             

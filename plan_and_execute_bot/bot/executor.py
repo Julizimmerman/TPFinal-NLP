@@ -1,4 +1,4 @@
-"""Single-step executor agent (ReAct style)."""
+"""Agente ejecutor de un solo paso (estilo ReAct)."""
 from langchain.agents import initialize_agent, AgentType
 from .config import LLM_EXECUTOR
 from .tools.weather import (

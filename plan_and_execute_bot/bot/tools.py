@@ -1,15 +1,15 @@
-"""Tools available to the executor agent."""
+"""Herramientas disponibles para el agente ejecutor."""
 from langchain.tools import tool
 
 @tool
 def get_weather(location: str) -> str:
-    """Get the current weather for a given location.
+    """Obtiene el clima actual para una ubicación dada.
     
     Args:
-        location: The location to get weather for
+        location: La ubicación para obtener el clima
         
     Returns:
-        The weather information
+        La información del clima
     """
     # Simulación de datos de clima para diferentes ciudades
     weather_data = {

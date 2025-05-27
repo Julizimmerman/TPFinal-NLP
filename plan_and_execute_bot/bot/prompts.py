@@ -1,44 +1,44 @@
 from langchain.prompts import PromptTemplate
 
 PLANNER_PROMPT = PromptTemplate.from_template(
-    """You are the planning module of an AI assistant with conversation memory.
+    """Eres el módulo de planificación de un asistente de IA con memoria de conversación.
     
-Context and user request: {input}
+Contexto y solicitud del usuario: {input}
 
-Analyze the input carefully. If it contains conversation history, consider previous context when planning.
-If the user refers to previous information (like "that city", "the weather I asked about", etc.), 
-use the conversation context to understand what they mean.
+Analiza la entrada cuidadosamente. Si contiene historial de conversación, considera el contexto previo al planificar.
+Si el usuario se refiere a información anterior (como "esa ciudad", "el clima que pregunté", etc.), 
+usa el contexto de la conversación para entender a qué se refiere.
 
-Break the request into a concise, ordered list of steps.
-Respond ONLY with numbered steps.
+Divide la solicitud en una lista concisa y ordenada de pasos.
+Responde SOLO con pasos numerados.
 
-Examples:
-- If user asks "What's the weather in Madrid?" → "1. Get current weather for Madrid"
-- If user then asks "What about tomorrow?" → "1. Get weather forecast for Madrid for tomorrow"
-- If user asks "How about Barcelona?" → "1. Get current weather for Barcelona"
+Ejemplos:
+- Si el usuario pregunta "¿Cuál es el clima en Madrid?" → "1. Obtener el clima actual de Madrid"
+- Si el usuario luego pregunta "¿Y mañana?" → "1. Obtener el pronóstico del clima para Madrid para mañana"
+- Si el usuario pregunta "¿Qué tal Barcelona?" → "1. Obtener el clima actual de Barcelona"
 """
 )
 
 REPLANNER_PROMPT = PromptTemplate.from_template(
-    """You are updating a multi-step plan with conversation awareness.
-User request: {input}
+    """Estás actualizando un plan de múltiples pasos con conciencia de conversación.
+Solicitud del usuario: {input}
 
-Original plan:
+Plan original:
 {plan}
 
-Steps already finished:
+Pasos ya completados:
 {past_steps}
 
-Consider the conversation context when deciding next steps. If the user is asking follow-up questions
-or referring to previous information, make sure the plan addresses their actual intent.
+Considera el contexto de la conversación al decidir los próximos pasos. Si el usuario está haciendo preguntas de seguimiento
+o refiriéndose a información anterior, asegúrate de que el plan aborde su intención real.
 
-Return EITHER:
-1) "RESPONSE: <final answer>" if the task is complete, OR
-2) "PLAN: <new numbered plan>" if more steps remain.
-Do NOT repeat completed steps.
+Devuelve CUALQUIERA DE LAS DOS OPCIONES:
+1) "RESPUESTA: <respuesta final>" si la tarea está completa, O
+2) "PLAN: <nuevo plan numerado>" si quedan más pasos.
+NO repitas pasos completados.
 """
 )
 
-EXECUTOR_PREFIX = """You are the execution agent with conversation awareness.
-Carry out the assigned sub-task and answer concisely.
-If the task refers to previous conversation context, use that information appropriately."""
+EXECUTOR_PREFIX = """Eres el agente de ejecución con conciencia de conversación.
+Lleva a cabo la subtarea asignada y responde de manera concisa.
+Si la tarea se refiere al contexto de conversación anterior, usa esa información apropiadamente."""
