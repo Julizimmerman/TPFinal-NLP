@@ -7,6 +7,7 @@ from .executor import agent_executor
 from .prompts import REPLANNER_PROMPT
 from .config import LLM_PLANNER  # we reuse the planner LLM for replanning
 from .memory import memory
+from .responder import generate_final_response
 
 # ---------- State transition helpers ---------- #
 
@@ -95,24 +96,33 @@ async def replan_or_finish(state: PlanExecute):
     plan = state.get("plan", [])
     past_steps = state.get("past_steps", [])
     session_id = state.get("session_id")
+    original_input = state.get("input", "")
     
-    # Si no hay más pasos en el plan, intentar generar una respuesta final
+    # Si no hay más pasos en el plan, generar una respuesta final usando el responder
     if not plan:
-        print("🔄 [DEBUG] No hay más pasos, generando respuesta final...")
-        if past_steps:
-            last_step_result = past_steps[-1][1]
-            # Si el último resultado parece ser una respuesta final, usarla
-            if any(keyword in last_step_result.lower() for keyword in ["°c", "clima", "weather", "temperatura", "madrid", "barcelona"]):
-                # Guardar la respuesta en memoria si hay sesión activa
-                if session_id:
-                    memory.add_message(session_id, "assistant", last_step_result)
-                return {"response": last_step_result}
+        print("🔄 [DEBUG] No hay más pasos, generando respuesta final con responder...")
         
-        # Si no hay pasos anteriores útiles, generar respuesta genérica
-        response = "He completado las tareas disponibles, pero no pude obtener la información solicitada."
-        if session_id:
-            memory.add_message(session_id, "assistant", response)
-        return {"response": response}
+        # Obtener el mejor resultado de los pasos ejecutados
+        tool_result = ""
+        if past_steps:
+            # Buscar el resultado más relevante (último con contenido útil)
+            for step, result in reversed(past_steps):
+                if result and len(result.strip()) > 10:
+                    tool_result = result
+                    break
+        
+        if not tool_result:
+            tool_result = "No se pudo obtener información específica de las herramientas ejecutadas."
+        
+        # Generar respuesta final usando el responder
+        final_response = await generate_final_response(
+            query=original_input,
+            tool_result=tool_result,
+            session_id=session_id,
+            past_steps=past_steps
+        )
+        
+        return {"response": final_response}
     
     plan_str = "\n".join(f"{i+1}. {s}" for i, s in enumerate(plan))
     past = "\n".join(f"{t} --> {r}" for t, r in past_steps)
@@ -121,16 +131,25 @@ async def replan_or_finish(state: PlanExecute):
     
     # Limitar el número de pasos para evitar bucles infinitos
     if len(past_steps) >= 5:
-        print("🔄 [DEBUG] Demasiados pasos ejecutados, finalizando...")
+        print("🔄 [DEBUG] Demasiados pasos ejecutados, finalizando con responder...")
+        
+        # Obtener el mejor resultado disponible
+        tool_result = ""
         if past_steps:
             last_result = past_steps[-1][1]
-            response = f"Proceso completado. Último resultado: {last_result}"
+            tool_result = last_result if last_result else "Proceso completado después de múltiples pasos."
         else:
-            response = "Proceso completado después de múltiples pasos."
+            tool_result = "Proceso completado después de múltiples pasos."
         
-        if session_id:
-            memory.add_message(session_id, "assistant", response)
-        return {"response": response}
+        # Generar respuesta final usando el responder
+        final_response = await generate_final_response(
+            query=original_input,
+            tool_result=tool_result,
+            session_id=session_id,
+            past_steps=past_steps
+        )
+        
+        return {"response": final_response}
     
     # Incluir contexto de conversación en el replanning
     input_with_context = state["input"]
@@ -153,15 +172,20 @@ async def replan_or_finish(state: PlanExecute):
         print(f"🔄 [DEBUG] Respuesta del replanner: {reply}")
 
         if reply.startswith("RESPUESTA:"):
-            response = reply[len("RESPUESTA:"):].strip()
-            result = {"response": response}
-            print(f"🔄 [DEBUG] Finalizando con respuesta: {result}")
+            # Usar el responder para generar una respuesta final pulida
+            raw_response = reply[len("RESPUESTA:"):].strip()
             
-            # Guardar respuesta en memoria
-            if session_id:
-                memory.add_message(session_id, "assistant", response)
+            final_response = await generate_final_response(
+                query=original_input,
+                tool_result=raw_response,
+                session_id=session_id,
+                past_steps=past_steps
+            )
             
+            result = {"response": final_response}
+            print(f"🔄 [DEBUG] Finalizando con respuesta del responder: {result}")
             return result
+            
         elif reply.startswith("PLAN:"):
             steps_text = reply[len("PLAN:"):].strip()
             steps = [line.split(".", 1)[1].strip() for line in steps_text.splitlines()
@@ -171,29 +195,40 @@ async def replan_or_finish(state: PlanExecute):
                 print(f"🔄 [DEBUG] Nuevo plan: {result}")
                 return result
             else:
-                print("🔄 [DEBUG] Plan vacío, finalizando...")
-                response = "No se pudo generar un plan válido para continuar."
-                if session_id:
-                    memory.add_message(session_id, "assistant", response)
-                return {"response": response}
+                print("🔄 [DEBUG] Plan vacío, finalizando con responder...")
+                
+                final_response = await generate_final_response(
+                    query=original_input,
+                    tool_result="No se pudo generar un plan válido para continuar.",
+                    session_id=session_id,
+                    past_steps=past_steps
+                )
+                
+                return {"response": final_response}
         else:
-            # fallback: treat as final response
-            response = reply.strip()
-            result = {"response": response}
-            print(f"🔄 [DEBUG] Fallback - respuesta final: {result}")
+            # fallback: usar el responder para procesar la respuesta
+            final_response = await generate_final_response(
+                query=original_input,
+                tool_result=reply.strip(),
+                session_id=session_id,
+                past_steps=past_steps
+            )
             
-            # Guardar respuesta en memoria
-            if session_id:
-                memory.add_message(session_id, "assistant", response)
-            
+            result = {"response": final_response}
+            print(f"🔄 [DEBUG] Fallback - respuesta final del responder: {result}")
             return result
             
     except Exception as e:
         print(f"🔄 [DEBUG] Error en replanner: {e}")
-        response = f"Error en el proceso de replanificación: {str(e)}"
-        if session_id:
-            memory.add_message(session_id, "assistant", response)
-        return {"response": response}
+        
+        final_response = await generate_final_response(
+            query=original_input,
+            tool_result=f"Error en el proceso de replanificación: {str(e)}",
+            session_id=session_id,
+            past_steps=past_steps
+        )
+        
+        return {"response": final_response}
 
 def should_finish(state: PlanExecute):
     has_response = state.get("response") is not None

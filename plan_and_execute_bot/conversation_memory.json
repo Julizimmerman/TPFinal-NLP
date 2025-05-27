@@ -53,7 +53,29 @@
         "content": "El clima actual en Tigre, Buenos Aires es muy nuboso, con una temperatura de 13.58°C y una humedad del 82%.",
         "timestamp": "2025-05-27T18:03:04.305989"
       }
+    ],
+    "0142ff14-27b4-4ac3-88d0-1f428d3a149f": [
+      {
+        "role": "user",
+        "content": "hola como estas",
+        "timestamp": "2025-05-27T18:09:03.789938"
+      },
+      {
+        "role": "assistant",
+        "content": "¡Hola! Estoy bien, gracias por preguntar. ¿Y tú, cómo estás?",
+        "timestamp": "2025-05-27T18:09:08.399769"
+      },
+      {
+        "role": "user",
+        "content": "quiero saber si puedo usar short en tigre ahora",
+        "timestamp": "2025-05-27T18:09:38.747631"
+      },
+      {
+        "role": "assistant",
+        "content": "En Tigre, con una temperatura de 13.56°C y una humedad del 78%, no es recomendable usar shorts. La temperatura es bastante fresca y la alta humedad puede hacer que te sientas incómodo. Lo mejor sería optar por pantalones largos o ropa más abrigada.",
+        "timestamp": "2025-05-27T18:09:47.112308"
+      }
     ]
   },
-  "last_updated": "2025-05-27T18:03:04.306076"
+  "last_updated": "2025-05-27T18:09:47.112341"
 }
