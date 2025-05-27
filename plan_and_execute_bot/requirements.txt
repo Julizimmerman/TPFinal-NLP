@@ -1,0 +1,16 @@
+# Dependencias principales para LangChain y Azure OpenAI
+langchain>=0.2.0
+langchain-openai>=0.1.8
+langgraph>=0.1.0
+
+# Manejo de variables de entorno
+python-dotenv>=1.0.0
+
+# Validación de datos
+pydantic>=2.5.0
+
+# Dependencias adicionales para Azure OpenAI
+openai>=1.12.0
+
+# Utilidades para desarrollo y testing
+typing-extensions>=4.8.0
