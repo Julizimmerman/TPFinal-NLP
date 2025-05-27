@@ -1,0 +1,37 @@
+{
+  "sessions": {
+    "ed07e4d7-81fe-486c-976a-54889ba6bfa0": [
+      {
+        "role": "user",
+        "content": "hola como va me llamo jack",
+        "timestamp": "2025-05-27T17:52:50.321103"
+      },
+      {
+        "role": "assistant",
+        "content": "He completado las tareas disponibles, pero no pude obtener la información solicitada.",
+        "timestamp": "2025-05-27T17:52:55.277930"
+      },
+      {
+        "role": "user",
+        "content": "como me llamo?",
+        "timestamp": "2025-05-27T17:53:07.063756"
+      },
+      {
+        "role": "assistant",
+        "content": "Proceso completado. Último resultado: El nombre del usuario es Jack.",
+        "timestamp": "2025-05-27T17:53:09.608049"
+      },
+      {
+        "role": "user",
+        "content": "/salir",
+        "timestamp": "2025-05-27T17:53:34.725850"
+      },
+      {
+        "role": "assistant",
+        "content": "Proceso completado. Último resultado: He reconocido que el usuario ha emitido un comando para salir de la conversación.",
+        "timestamp": "2025-05-27T17:53:37.470356"
+      }
+    ]
+  },
+  "last_updated": "2025-05-27T17:53:37.470382"
+}

@@ -6,15 +6,28 @@ from .planner import make_plan
 from .executor import agent_executor
 from .prompts import REPLANNER_PROMPT
 from .config import LLM_PLANNER  # we reuse the planner LLM for replanning
+from .memory import memory
 
 # ---------- State transition helpers ---------- #
 
 async def plan_step(state: PlanExecute):
     print("🔄 [DEBUG] Iniciando plan_step...")
     print(f"🔄 [DEBUG] Input recibido: {state['input']}")
-    plan = make_plan(state["input"])
+    
+    # Obtener session_id del estado
+    session_id = state.get("session_id")
+    
+    # Crear plan con contexto de conversación
+    plan = make_plan(state["input"], session_id)
     print(f"🔄 [DEBUG] Plan generado: {plan.steps}")
-    return {"plan": plan.steps}
+    
+    # Inicializar conversation_history si no existe
+    conversation_history = state.get("conversation_history", [])
+    
+    return {
+        "plan": plan.steps,
+        "conversation_history": conversation_history
+    }
 
 async def execute_step(state: PlanExecute):
     print("🔄 [DEBUG] Iniciando execute_step...")
@@ -37,8 +50,17 @@ async def execute_step(state: PlanExecute):
     
     plan_str = "\n".join(f"{i+1}. {step}" for i, step in enumerate(plan))
     print(f"🔄 [DEBUG] Ejecutando tarea: {task}")
+    
+    # Incluir contexto de conversación en la tarea si está disponible
+    session_id = state.get("session_id")
+    context_info = ""
+    if session_id:
+        context = memory.get_context_for_planning(session_id, max_messages=5)
+        if context != "Esta es una nueva conversación.":
+            context_info = f"\n\nContexto de conversación:\n{context}"
+    
     task_formatted = f"""For the following plan:
-        {plan_str}\n\nYou are tasked with executing step 1, {task}."""
+        {plan_str}\n\nYou are tasked with executing step 1, {task}.{context_info}"""
     print(f"🔄 [DEBUG] Tarea formateada: {task_formatted}")
     print("🔄 [DEBUG] Invocando agent_executor...")
     
@@ -72,6 +94,7 @@ async def replan_or_finish(state: PlanExecute):
     
     plan = state.get("plan", [])
     past_steps = state.get("past_steps", [])
+    session_id = state.get("session_id")
     
     # Si no hay más pasos en el plan, intentar generar una respuesta final
     if not plan:
@@ -79,11 +102,17 @@ async def replan_or_finish(state: PlanExecute):
         if past_steps:
             last_step_result = past_steps[-1][1]
             # Si el último resultado parece ser una respuesta final, usarla
-            if any(keyword in last_step_result.lower() for keyword in ["°c", "clima", "weather", "temperatura", "madrid"]):
+            if any(keyword in last_step_result.lower() for keyword in ["°c", "clima", "weather", "temperatura", "madrid", "barcelona"]):
+                # Guardar la respuesta en memoria si hay sesión activa
+                if session_id:
+                    memory.add_message(session_id, "assistant", last_step_result)
                 return {"response": last_step_result}
         
         # Si no hay pasos anteriores útiles, generar respuesta genérica
-        return {"response": "He completado las tareas disponibles, pero no pude obtener la información solicitada."}
+        response = "He completado las tareas disponibles, pero no pude obtener la información solicitada."
+        if session_id:
+            memory.add_message(session_id, "assistant", response)
+        return {"response": response}
     
     plan_str = "\n".join(f"{i+1}. {s}" for i, s in enumerate(plan))
     past = "\n".join(f"{t} --> {r}" for t, r in past_steps)
@@ -95,8 +124,20 @@ async def replan_or_finish(state: PlanExecute):
         print("🔄 [DEBUG] Demasiados pasos ejecutados, finalizando...")
         if past_steps:
             last_result = past_steps[-1][1]
-            return {"response": f"Proceso completado. Último resultado: {last_result}"}
-        return {"response": "Proceso completado después de múltiples pasos."}
+            response = f"Proceso completado. Último resultado: {last_result}"
+        else:
+            response = "Proceso completado después de múltiples pasos."
+        
+        if session_id:
+            memory.add_message(session_id, "assistant", response)
+        return {"response": response}
+    
+    # Incluir contexto de conversación en el replanning
+    input_with_context = state["input"]
+    if session_id:
+        context = memory.get_context_for_planning(session_id, max_messages=5)
+        if context != "Esta es una nueva conversación.":
+            input_with_context = f"{context}\n\nConsulta actual: {state['input']}"
     
     prompt_chain = REPLANNER_PROMPT | LLM_PLANNER
     print("🔄 [DEBUG] Invocando replanner...")
@@ -104,7 +145,7 @@ async def replan_or_finish(state: PlanExecute):
     try:
         reply = (await prompt_chain.ainvoke(
             {
-                "input": state["input"],
+                "input": input_with_context,
                 "plan": plan_str or "None",
                 "past_steps": past or "None",
             }
@@ -112,8 +153,14 @@ async def replan_or_finish(state: PlanExecute):
         print(f"🔄 [DEBUG] Respuesta del replanner: {reply}")
 
         if reply.startswith("RESPONSE:"):
-            result = {"response": reply[len("RESPONSE:"):].strip()}
+            response = reply[len("RESPONSE:"):].strip()
+            result = {"response": response}
             print(f"🔄 [DEBUG] Finalizando con respuesta: {result}")
+            
+            # Guardar respuesta en memoria
+            if session_id:
+                memory.add_message(session_id, "assistant", response)
+            
             return result
         elif reply.startswith("PLAN:"):
             steps_text = reply[len("PLAN:"):].strip()
@@ -125,16 +172,28 @@ async def replan_or_finish(state: PlanExecute):
                 return result
             else:
                 print("🔄 [DEBUG] Plan vacío, finalizando...")
-                return {"response": "No se pudo generar un plan válido para continuar."}
+                response = "No se pudo generar un plan válido para continuar."
+                if session_id:
+                    memory.add_message(session_id, "assistant", response)
+                return {"response": response}
         else:
             # fallback: treat as final response
-            result = {"response": reply.strip()}
+            response = reply.strip()
+            result = {"response": response}
             print(f"🔄 [DEBUG] Fallback - respuesta final: {result}")
+            
+            # Guardar respuesta en memoria
+            if session_id:
+                memory.add_message(session_id, "assistant", response)
+            
             return result
             
     except Exception as e:
         print(f"🔄 [DEBUG] Error en replanner: {e}")
-        return {"response": f"Error en el proceso de replanificación: {str(e)}"}
+        response = f"Error en el proceso de replanificación: {str(e)}"
+        if session_id:
+            memory.add_message(session_id, "assistant", response)
+        return {"response": response}
 
 def should_finish(state: PlanExecute):
     has_response = state.get("response") is not None
