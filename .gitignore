@@ -1,0 +1,39 @@
+# Archivos de credenciales de Google API
+credentials.json
+token.json
+
+# Entornos virtuales de Python
+.venv/
+venv/
+env/
+
+# Archivos de configuración local
+.env
+.env.local
+
+# Cache de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Archivos temporales
+*.tmp
+*.temp
+
+# Memoria de conversación (puede contener información sensible)
+conversation_memory.json 

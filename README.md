@@ -10,6 +10,7 @@ Un bot conversacional que utiliza LangGraph para planificar y ejecutar tareas pa
 - **🧠 Memoria de Conversación**: Recuerda el contexto de conversaciones anteriores
 - **📝 Persistencia**: Guarda el historial en archivo JSON
 - **🔄 Sesiones Múltiples**: Maneja múltiples conversaciones independientes
+- **📋 Gestión de Tareas**: Integración con Google Tasks para crear y gestionar tareas
 
 ## Funcionalidades de Memoria
 
@@ -40,6 +41,7 @@ Bot > Según la información anterior, Barcelona está más caliente (25°C) que
 
 ## Herramientas Disponibles
 
+### 🌤️ Herramientas de Clima
 - `get_weather(location)`: Obtiene información del clima actual
 - `get_next_rain_day(location)`: Próximo día con lluvia
 - `get_weekly_summary(location)`: Resumen del clima de 5 días
@@ -47,6 +49,14 @@ Bot > Según la información anterior, Barcelona está más caliente (25°C) que
 - `geocode(location)`: Obtener coordenadas de una ubicación
 - `get_air_quality(location)`: Calidad del aire
 - `get_sun_times(location)`: Horarios de amanecer y atardecer
+
+### 📋 Herramientas de Gestión de Tareas (Google Tasks)
+- `create_task(title, notes)`: Crea una nueva tarea con título y notas opcionales
+- `list_tasks()`: Lista todas las tareas pendientes
+- `complete_task(task_title)`: Marca una tarea como completada
+- `delete_task(task_title)`: Elimina una tarea
+- `edit_task(task_title, new_title, new_notes)`: Edita el título o notas de una tarea
+- `search_tasks(keyword)`: Busca tareas que contengan una palabra clave
 
 ## Instalación
 
@@ -66,6 +76,12 @@ AZURE_OPENAI_PLANNER_DEPLOYMENT=gpt-4
 AZURE_OPENAI_EXECUTOR_DEPLOYMENT=gpt-35-turbo
 TAVILY_API_KEY=tu_clave_tavily_aqui  # opcional para esta versión
 ```
+
+3. **Configurar Google Tasks (opcional)**:
+   - Ver `CONFIGURACION_TASKS.md` para instrucciones detalladas
+   - Crear proyecto en Google Cloud Console
+   - Habilitar Google Tasks API
+   - Configurar OAuth 2.0 y descargar `credentials.json`
 
 ## Uso
 
