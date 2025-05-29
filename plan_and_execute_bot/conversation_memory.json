@@ -427,7 +427,19 @@
         "content": "Lamento la confusión. He añadido correctamente la nota \"completar margarita\" a la tarea \"tpRobotica\". Si necesitas algo más, házmelo saber.",
         "timestamp": "2025-05-29T16:16:58.201939"
       }
+    ],
+    "f8486456-d671-4c63-aede-708142f0ce28": [
+      {
+        "role": "user",
+        "content": "hace una tarea de comprar media y agregarle una nota de tienen que ser largas",
+        "timestamp": "2025-05-29T16:25:17.597761"
+      },
+      {
+        "role": "assistant",
+        "content": "He agregado la nota \"tienen que ser largas\" a la tarea \"Compra de medias\". Si necesitas algo más, no dudes en decírmelo.",
+        "timestamp": "2025-05-29T16:25:28.203760"
+      }
     ]
   },
-  "last_updated": "2025-05-29T16:16:58.201978"
+  "last_updated": "2025-05-29T16:25:28.203796"
 }

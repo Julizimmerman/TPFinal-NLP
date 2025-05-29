@@ -42,17 +42,59 @@ async def execute_step(state: PlanExecute):
         print("🔄 [DEBUG] No hay más pasos en el plan")
         return {"response": "Plan completado, pero no se pudo obtener una respuesta final."}
     
-    # Detectar bucles - si hemos ejecutado la misma tarea más de 2 veces
-    task = plan[0]
-    task_count = sum(1 for step, _ in past_steps if step == task)
-    if task_count >= 2:
-        print(f"🔄 [DEBUG] Detectado bucle en la tarea: {task}")
-        return {"response": f"No se pudo completar la tarea '{task}' después de múltiples intentos. Por favor, reformula tu consulta."}
+    # Determinar cuántos pasos ejecutar en esta iteración
+    steps_to_execute = []
+    
+    # Siempre ejecutar el primer paso
+    steps_to_execute.append(plan[0])
+    
+    # Si hay más pasos y son complementarios, ejecutarlos también
+    if len(plan) > 1:
+        # Identificar si los siguientes pasos son complementarios
+        # (por ejemplo, crear tareas múltiples, buscar y analizar, etc.)
+        current_step = plan[0].lower()
+        
+        # Detectar patrones de múltiples operaciones relacionadas
+        for i in range(1, min(len(plan), 3)):  # Máximo 3 pasos por ejecución
+            next_step = plan[i].lower()
+            
+            # Casos donde tiene sentido ejecutar múltiples pasos:
+            should_execute_together = False
+            
+            # 1. Múltiples creaciones de tareas
+            if ("crear" in current_step and "tarea" in current_step and
+                "crear" in next_step and "tarea" in next_step):
+                should_execute_together = True
+            
+            # 2. Operaciones de listado seguidas de operaciones específicas
+            elif ("listar" in current_step and any(word in next_step for word in ["completar", "eliminar", "editar"])):
+                should_execute_together = True
+                
+            # 3. Búsquedas seguidas de acciones específicas
+            elif ("buscar" in current_step and any(word in next_step for word in ["completar", "eliminar", "editar"])):
+                should_execute_together = True
+                
+            # 4. Obtener información del clima seguido de consejos
+            elif ("clima" in current_step and "consejo" in next_step):
+                should_execute_together = True
+            
+            if should_execute_together:
+                steps_to_execute.append(plan[i])
+            else:
+                break
+    
+    print(f"🔄 [DEBUG] Ejecutando {len(steps_to_execute)} pasos: {steps_to_execute}")
+    
+    # Detectar bucles - si hemos ejecutado alguna de estas tareas más de 2 veces
+    for task in steps_to_execute:
+        task_count = sum(1 for step, _ in past_steps if step == task)
+        if task_count >= 2:
+            print(f"🔄 [DEBUG] Detectado bucle en la tarea: {task}")
+            return {"response": f"No se pudo completar la tarea '{task}' después de múltiples intentos. Por favor, reformula tu consulta."}
     
     plan_str = "\n".join(f"{i+1}. {step}" for i, step in enumerate(plan))
-    print(f"🔄 [DEBUG] Ejecutando tarea: {task}")
     
-    # Incluir contexto de conversación en la tarea si está disponible
+    # Incluir contexto de conversación si está disponible
     session_id = state.get("session_id")
     context_info = ""
     if session_id:
@@ -60,8 +102,18 @@ async def execute_step(state: PlanExecute):
         if context != "Esta es una nueva conversación.":
             context_info = f"\n\nContexto de conversación:\n{context}"
     
-    task_formatted = f"""Para el siguiente plan:
-        {plan_str}\n\nTu tarea es ejecutar el paso 1, {task}.{context_info}"""
+    # Formatear la tarea considerando múltiples pasos
+    if len(steps_to_execute) == 1:
+        task_formatted = f"""Para el siguiente plan:
+        {plan_str}\n\nTu tarea es ejecutar el paso 1: {steps_to_execute[0]}.{context_info}"""
+    else:
+        steps_text = "\n".join(f"- {step}" for step in steps_to_execute)
+        task_formatted = f"""Para el siguiente plan:
+        {plan_str}\n\nTu tarea es ejecutar los siguientes pasos relacionados:
+        {steps_text}
+        
+        Ejecuta todas estas tareas en secuencia, usando múltiples herramientas si es necesario.{context_info}"""
+    
     print(f"🔄 [DEBUG] Tarea formateada: {task_formatted}")
     print("🔄 [DEBUG] Invocando agent_executor...")
     
@@ -71,11 +123,13 @@ async def execute_step(state: PlanExecute):
         )
         print(f"🔄 [DEBUG] Respuesta del agente: {agent_response}")
         
-        # Agregar el paso completado a past_steps
-        new_past_steps = past_steps + [(task, agent_response["output"])]
+        # Agregar todos los pasos completados a past_steps
+        new_past_steps = past_steps[:]
+        for step in steps_to_execute:
+            new_past_steps.append((step, agent_response["output"]))
         
-        # Remover el primer paso del plan (ya ejecutado)
-        remaining_plan = plan[1:] if len(plan) > 1 else []
+        # Remover los pasos ejecutados del plan
+        remaining_plan = plan[len(steps_to_execute):] if len(plan) > len(steps_to_execute) else []
         
         result = {
             "past_steps": new_past_steps,
@@ -130,7 +184,7 @@ async def replan_or_finish(state: PlanExecute):
     print(f"🔄 [DEBUG] Past steps: {past}")
     
     # Limitar el número de pasos para evitar bucles infinitos
-    if len(past_steps) >= 5:
+    if len(past_steps) >= 8:  # Aumentado de 5 a 8 para permitir más operaciones
         print("🔄 [DEBUG] Demasiados pasos ejecutados, finalizando con responder...")
         
         # Obtener el mejor resultado disponible

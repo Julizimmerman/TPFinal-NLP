@@ -1,6 +1,7 @@
 """Agente ejecutor de un solo paso (estilo ReAct)."""
 from langchain.agents import initialize_agent, AgentType
 from .config import LLM_EXECUTOR
+from .prompts import EXECUTOR_PREFIX
 from .tools.weather import (
     get_weather,
     get_next_rain_day,
@@ -39,11 +40,15 @@ TOOLS = [
     search_tasks
 ]
 
+# Configuración optimizada para permitir múltiples llamadas a herramientas
 agent_executor = initialize_agent(
     TOOLS,
     LLM_EXECUTOR,
     agent=AgentType.OPENAI_FUNCTIONS,
     verbose=False,
-    prefix_prompt="",
-    suffix_prompt="",
+    agent_kwargs={"system_message": EXECUTOR_PREFIX},  # Aplicar el prompt mejorado
+    max_iterations=10,  # Permitir más iteraciones para múltiples herramientas
+    max_execution_time=60,  # Timeout de 60 segundos
+    early_stopping_method="generate",  # Continuar hasta completar la tarea
+    handle_parsing_errors=True,  # Manejar errores de parsing
 )
