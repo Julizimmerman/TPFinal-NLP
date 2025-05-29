@@ -365,7 +365,69 @@
         "content": "El clima actual en Tigre es el siguiente:\n\n- **Condiciones meteorológicas**: Cielo claro\n- **Temperatura**: 11.99°C\n- **Humedad**: 53%\n\nSi necesitas más información o el pronóstico, házmelo saber.",
         "timestamp": "2025-05-29T15:58:02.170914"
       }
+    ],
+    "f1c6b5e2-c40d-4a4b-8609-99a746b7cca7": [
+      {
+        "role": "user",
+        "content": "crea una nueva tarea: tpNLP",
+        "timestamp": "2025-05-29T16:11:53.501591"
+      },
+      {
+        "role": "assistant",
+        "content": "He creado la nueva tarea llamada \"tpNLP\". Si necesitas algo más, no dudes en decírmelo.",
+        "timestamp": "2025-05-29T16:11:59.499814"
+      },
+      {
+        "role": "user",
+        "content": "agrega notas a la tarea tp nlp: no olvidar antes del miercoles",
+        "timestamp": "2025-05-29T16:12:52.671127"
+      },
+      {
+        "role": "assistant",
+        "content": "He agregado la nota \"no olvidar antes del miércoles\" a la tarea \"tpNLP\". Si necesitas algo más, házmelo saber.",
+        "timestamp": "2025-05-29T16:13:03.398289"
+      },
+      {
+        "role": "user",
+        "content": "crea una nueva tarea: tpNLP",
+        "timestamp": "2025-05-29T16:13:19.917194"
+      },
+      {
+        "role": "assistant",
+        "content": "La tarea \"tpNLP\" ya existe. Si deseas realizar alguna acción adicional con ella, como agregar más notas o modificarla, házmelo saber.",
+        "timestamp": "2025-05-29T16:13:25.974698"
+      },
+      {
+        "role": "user",
+        "content": "Con lo que ya hiciste esta bien, no sobreescribas la tarea",
+        "timestamp": "2025-05-29T16:13:50.647965"
+      },
+      {
+        "role": "assistant",
+        "content": "Entendido, no realizaré ninguna modificación en la tarea \"tpNLP\". Si necesitas algo más en el futuro, no dudes en decírmelo.",
+        "timestamp": "2025-05-29T16:13:57.977507"
+      },
+      {
+        "role": "user",
+        "content": "crea una nueva tarea: tpRobotica. Agrega en notas: completar margarita",
+        "timestamp": "2025-05-29T16:16:21.389984"
+      },
+      {
+        "role": "assistant",
+        "content": "He creado la nueva tarea llamada \"tpRobotica\". Ahora, procederé a agregar la nota \"completar margarita\" a esta tarea. Si necesitas algo más, házmelo saber.",
+        "timestamp": "2025-05-29T16:16:28.608656"
+      },
+      {
+        "role": "user",
+        "content": "no le agregaste la nota",
+        "timestamp": "2025-05-29T16:16:51.447274"
+      },
+      {
+        "role": "assistant",
+        "content": "Lamento la confusión. He añadido correctamente la nota \"completar margarita\" a la tarea \"tpRobotica\". Si necesitas algo más, házmelo saber.",
+        "timestamp": "2025-05-29T16:16:58.201939"
+      }
     ]
   },
-  "last_updated": "2025-05-29T15:58:02.170955"
+  "last_updated": "2025-05-29T16:16:58.201978"
 }

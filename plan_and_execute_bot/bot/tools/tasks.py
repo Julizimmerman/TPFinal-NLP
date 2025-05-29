@@ -53,12 +53,11 @@ def get_task_id_by_title(title: str) -> str:
         return None
 
 @tool
-def create_task(title: str, notes: str = "") -> str:
+def create_task(title: str) -> str:
     """Crea una nueva tarea en Google Tasks.
     
     Args:
         title: El título de la tarea
-        notes: Notas adicionales para la tarea (opcional)
         
     Returns:
         Mensaje confirmando la creación de la tarea
@@ -81,9 +80,6 @@ def create_task(title: str, notes: str = "") -> str:
         body = {'title': title}
         task = service.tasks().insert(tasklist='@default', body=body).execute()
 
-        if notes:
-            task['notes'] = notes
-            service.tasks().update(tasklist='@default', task=task['id'], body=task).execute()
 
         return f"Tarea creada: «{task['title']}» (id: {task['id']})"
     except FileNotFoundError as e:
