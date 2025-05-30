@@ -439,7 +439,135 @@
         "content": "He agregado la nota \"tienen que ser largas\" a la tarea \"Compra de medias\". Si necesitas algo más, no dudes en decírmelo.",
         "timestamp": "2025-05-29T16:25:28.203760"
       }
+    ],
+    "975df969-0556-4658-beac-1f1f9f3aa54d": [
+      {
+        "role": "user",
+        "content": "hola quiero saber que tengo en drive",
+        "timestamp": "2025-05-29T16:49:08.812146"
+      },
+      {
+        "role": "assistant",
+        "content": "Hola, parece que no tengo acceso a tu cuenta de Google Drive, por lo que no puedo verificar qué archivos o carpetas tienes allí. Si necesitas ayuda con algo más o quieres intentar otra consulta, ¡házmelo saber!",
+        "timestamp": "2025-05-29T16:49:26.480012"
+      },
+      {
+        "role": "user",
+        "content": "fijate denuevo",
+        "timestamp": "2025-05-29T16:49:41.395341"
+      },
+      {
+        "role": "assistant",
+        "content": "Lo siento, pero no tengo acceso a tu cuenta de Google Drive, por lo que no puedo verificar qué archivos o carpetas tienes allí. Si hay algo específico que te gustaría saber sobre cómo organizar archivos, compartir documentos o cualquier otra consulta relacionada, ¡estaré encantado de ayudarte!",
+        "timestamp": "2025-05-29T16:49:50.133252"
+      }
+    ],
+    "17af585b-8ddd-4d67-b281-8b2b00ba45b6": [
+      {
+        "role": "user",
+        "content": "hola que tengo en el drive?",
+        "timestamp": "2025-05-30T10:57:47.083243"
+      },
+      {
+        "role": "assistant",
+        "content": "Hola, no puedo acceder directamente a tu Google Drive para ver qué tienes allí. Sin embargo, ¿te gustaría intentar acceder a una carpeta específica en tu Drive?",
+        "timestamp": "2025-05-30T10:58:00.943848"
+      }
+    ],
+    "e675a52d-5bb6-4532-8e36-8822c1a2b973": [
+      {
+        "role": "user",
+        "content": "hola que tengo en el drive",
+        "timestamp": "2025-05-30T11:04:14.905184"
+      },
+      {
+        "role": "assistant",
+        "content": "Hola, he accedido a tu cuenta de Google Drive y aquí tienes los archivos y carpetas disponibles:\n\n1. **TestDoc** (Google Doc) - Modificado: 2025-05-29\n2. **TestChatbot** (Carpeta) - Modificado: 2025-05-29\n\nSi necesitas más información o realizar alguna acción, házmelo saber.",
+        "timestamp": "2025-05-30T11:04:22.925284"
+      },
+      {
+        "role": "user",
+        "content": "agrega un archivo que tenga adentro un mensaje de hola como estas, el archivo que se llame danputo",
+        "timestamp": "2025-05-30T11:05:25.199611"
+      },
+      {
+        "role": "assistant",
+        "content": "He descargado el archivo \"danputo\" exitosamente. Ahora puedes editarlo para agregar el mensaje \"hola como estas\". Si necesitas ayuda para realizar la edición, házmelo saber.",
+        "timestamp": "2025-05-30T11:05:47.776973"
+      },
+      {
+        "role": "user",
+        "content": "pone hola como estas en el archivo",
+        "timestamp": "2025-05-30T11:07:29.129937"
+      },
+      {
+        "role": "assistant",
+        "content": "He encontrado varios archivos llamados \"danputo\" en tu Google Drive. Aquí están los detalles:\n\n1. **danputo** (ID: 1CyeQ_oMfsACuF-Myq2fWjac5xkXqZssSji4dRYEiJps, Modificado: 2025-05-30)\n2. **danputo** (ID: 11OoLyVyP8pfmIxgk23K9G6MjihdN1aA_cDnMvUCl7R4, Modificado: 2025-05-30)\n3. **danputo** (ID: 1JYpQrpKBtl3GfjupmutuVk9x1TwyCu42OVS_M2ezCEU, Modificado: 2025-05-30)\n\nPor favor, indícame cuál de estos archivos deseas abrir para agregar el mensaje \"hola como estas\".",
+        "timestamp": "2025-05-30T11:07:39.157865"
+      },
+      {
+        "role": "user",
+        "content": "es el mismo",
+        "timestamp": "2025-05-30T11:08:08.298871"
+      },
+      {
+        "role": "assistant",
+        "content": "He encontrado varios archivos llamados \"danputo\" en tu Google Drive. Para agregar el mensaje \"hola como estas\", por favor indícame cuál de los siguientes archivos deseas abrir:\n\n1. **danputo** (ID: 1CyeQ_oMfsACuF-Myq2fWjac5xkXqZssSji4dRYEiJps, Modificado: 2025-05-30)\n2. **danputo** (ID: 11OoLyVyP8pfmIxgk23K9G6MjihdN1aA_cDnMvUCl7R4, Modificado: 2025-05-30)\n3. **danputo** (ID: 1JYpQrpKBtl3GfjupmutuVk9x1TwyCu42OVS_M2ezCEU, Modificado: 2025-05-30)\n\nEspero tu respuesta para proceder.",
+        "timestamp": "2025-05-30T11:08:17.582202"
+      },
+      {
+        "role": "user",
+        "content": "en el 1",
+        "timestamp": "2025-05-30T11:08:38.276101"
+      },
+      {
+        "role": "assistant",
+        "content": "Parece que no puedo abrir el archivo \"danputo\" con el ID que proporcionaste (1CyeQ_oMfsACuF-Myq2fWjac5xkXqZssSji4dRYEiJps). Podría ser que el archivo no esté disponible o que haya un error en la identificación. \n\n¿Te gustaría intentar con otro archivo o verificar el ID nuevamente?",
+        "timestamp": "2025-05-30T11:08:46.328420"
+      }
+    ],
+    "252fed31-6f58-4b21-9b96-2f24ca913e73": [
+      {
+        "role": "user",
+        "content": "hola puedes mandar un mail a jzimmermann?",
+        "timestamp": "2025-05-30T12:12:39.796004"
+      },
+      {
+        "role": "assistant",
+        "content": "Hola, para poder enviar un correo a jzimmermann, necesito que me proporciones su dirección de correo electrónico. ¿Podrías compartirla, por favor?",
+        "timestamp": "2025-05-30T12:13:03.710843"
+      },
+      {
+        "role": "user",
+        "content": "jzimmerman@udesa.edu.ar",
+        "timestamp": "2025-05-30T12:13:33.412685"
+      },
+      {
+        "role": "assistant",
+        "content": "¿Deseas que envíe un correo a jzimmerman@udesa.edu.ar?",
+        "timestamp": "2025-05-30T12:13:37.821476"
+      },
+      {
+        "role": "user",
+        "content": "si con asunto \"nlp\" y que diga buen dia",
+        "timestamp": "2025-05-30T12:14:18.840172"
+      },
+      {
+        "role": "assistant",
+        "content": "Claro, voy a enviar un correo a jzimmerman@udesa.edu.ar con el asunto \"nlp\" y el mensaje \"buen día\".",
+        "timestamp": "2025-05-30T12:14:24.872329"
+      },
+      {
+        "role": "user",
+        "content": "decime los ultimos mails que tuve?",
+        "timestamp": "2025-05-30T12:15:33.644411"
+      },
+      {
+        "role": "assistant",
+        "content": "Lamentablemente, no puedo acceder a tu bandeja de entrada para listar los últimos correos electrónicos debido a un problema con la configuración de la API de Gmail. Te recomiendo que verifiques la configuración en la consola de desarrolladores de Google. Si necesitas ayuda con algo más, házmelo saber.",
+        "timestamp": "2025-05-30T12:15:39.826483"
+      }
     ]
   },
-  "last_updated": "2025-05-29T16:25:28.203796"
+  "last_updated": "2025-05-30T12:15:39.826517"
 }

@@ -1,6 +1,7 @@
 # Archivos de credenciales de Google API
 credentials.json
 token.json
+drive_token.json
 
 # Entornos virtuales de Python
 .venv/
@@ -36,4 +37,7 @@ Thumbs.db
 *.temp
 
 # Memoria de conversación (puede contener información sensible)
-conversation_memory.json 
+conversation_memory.json
+
+# Archivos de prueba temporales
+test_drive_tools.py 
