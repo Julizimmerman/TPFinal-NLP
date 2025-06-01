@@ -1,0 +1,13 @@
+README.md
+setup.py
+gmail_node/__init__.py
+gmail_node/gmail_node.py
+gmail_node/gmail_service.py
+gmail_node/prompts.py
+gmail_node/test_gmail_node.py
+gmail_node/tools.py
+gmail_node.egg-info/PKG-INFO
+gmail_node.egg-info/SOURCES.txt
+gmail_node.egg-info/dependency_links.txt
+gmail_node.egg-info/requires.txt
+gmail_node.egg-info/top_level.txt
