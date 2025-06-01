@@ -6,8 +6,8 @@ from langchain.agents.format_scratchpad import format_to_openai_function_message
 from langchain.agents.output_parsers import OpenAIFunctionsAgentOutputParser
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.schema.runnable import RunnablePassthrough
-from langchain.tools.render import format_tool_to_openai_function
-from langchain_openai import ChatOpenAI
+from langchain_core.utils.function_calling import convert_to_openai_function
+from langchain_openai import AzureChatOpenAI
 
 from gmail_node.gmail_service import GmailService
 from gmail_node.tools import create_gmail_tools
@@ -30,8 +30,10 @@ class GmailNode:
         self,
         creds_file_path: str,
         token_path: str,
-        openai_api_key: str,
-        model_name: str = "gpt-4-turbo-preview",
+        azure_openai_api_key: Optional[str] = None,
+        azure_openai_endpoint: str = "https://zimme-mb6x0rnm-eastus2.cognitiveservices.azure.com/",
+        azure_deployment_name: str = "gpt-4o-mini",
+        azure_api_version: str = "2025-01-01-preview",
         temperature: float = 0.7
     ):
         """Initialize the Gmail node with necessary credentials and configuration.
@@ -39,16 +41,26 @@ class GmailNode:
         Args:
             creds_file_path: Path to the Google API credentials file
             token_path: Path to store/retrieve the OAuth token
-            openai_api_key: OpenAI API key for the language model
-            model_name: Name of the OpenAI model to use
+            azure_openai_api_key: Azure OpenAI API key (optional if set in environment)
+            azure_openai_endpoint: Azure OpenAI endpoint URL
+            azure_deployment_name: Azure OpenAI deployment name
+            azure_api_version: Azure OpenAI API version
             temperature: Temperature setting for the language model
         """
         self.gmail_service = GmailService(creds_file_path, token_path)
         self.tools = create_gmail_tools(self.gmail_service)
-        self.llm = ChatOpenAI(
-            model_name=model_name,
-            temperature=temperature,
-            api_key=openai_api_key
+        
+        # Get API key from parameter or environment variable
+        api_key = azure_openai_api_key or os.getenv("AZURE_OPENAI_API_KEY")
+        if not api_key:
+            raise ValueError("Azure OpenAI API key must be provided either as a parameter or through AZURE_OPENAI_API_KEY environment variable")
+            
+        self.llm = AzureChatOpenAI(
+            openai_api_version=azure_api_version,
+            azure_deployment=azure_deployment_name,
+            azure_endpoint=azure_openai_endpoint,
+            api_key=api_key,
+            temperature=temperature
         )
         
         # Create the agent
@@ -63,7 +75,7 @@ class GmailNode:
         ])
         
         llm_with_tools = self.llm.bind(
-            functions=[format_tool_to_openai_function(t) for t in self.tools]
+            functions=[convert_to_openai_function(t) for t in self.tools]
         )
         
         agent = (

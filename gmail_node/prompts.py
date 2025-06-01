@@ -32,7 +32,6 @@ You have the following tools available:
 Never send an email draft or trash an email unless the user confirms first. 
 Always ask for approval if not already given.
 
-When showing unread emails, always display ALL unread emails in the response, not just a subset.
 Format each email with its subject, sender, and date.
 """
 

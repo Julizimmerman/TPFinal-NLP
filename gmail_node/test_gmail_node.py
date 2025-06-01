@@ -16,19 +16,18 @@ async def test_gmail_node():
     # Get credentials from environment variables
     creds_file_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
     token_path = os.getenv("GMAIL_TOKEN_PATH", "token.json")
-    openai_api_key = os.getenv("OPENAI_API_KEY")
-    
-    if not all([creds_file_path, openai_api_key]):
-        print("Error: Missing required environment variables.")
-        print("Please set GOOGLE_APPLICATION_CREDENTIALS and OPENAI_API_KEY")
-        return
+    azure_openai_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+    print(f"Azure OpenAI API Key: {azure_openai_api_key}")
     
     # Initialize Gmail node
     print("Initializing Gmail node...")
     gmail_node = GmailNode(
         creds_file_path=creds_file_path,
         token_path=token_path,
-        openai_api_key=openai_api_key
+        azure_openai_api_key=azure_openai_api_key,
+        azure_openai_endpoint="https://zimme-mb6x0rnm-eastus2.cognitiveservices.azure.com/",
+        azure_deployment_name="gpt-4o-mini",
+        azure_api_version="2025-01-01-preview"
     )
     
     # Test 1: List unread emails

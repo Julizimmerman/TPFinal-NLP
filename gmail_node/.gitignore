@@ -46,6 +46,13 @@ token.pickle
 *.p12
 *.pfx
 
+# Azure specific files
+azure_credentials.json
+azure_config.json
+*.publishsettings
+*.azureauth
+*.azure
+
 # Logs and databases
 *.log
 *.sqlite
