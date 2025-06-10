@@ -1,0 +1,10 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "plan_execute_bot": {
+      "path": "plan_and_execute_bot.bot.graph:build_chatbot_graph",
+      "description": "Bot de planificación y ejecución con memoria conversacional"
+    }
+  },
+  "env": ".env"
+} 
