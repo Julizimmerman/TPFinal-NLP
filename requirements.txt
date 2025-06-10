@@ -3,6 +3,14 @@ langchain>=0.2.0
 langchain-openai>=0.1.8
 langgraph>=0.1.0
 
+# LangGraph CLI y herramientas de desarrollo
+langgraph-cli>=0.1.0
+
+# Servidor para desarrollo (usado por langgraph dev)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+websockets>=12.0
+
 # Manejo de variables de entorno
 python-dotenv>=1.0.0
 
@@ -20,3 +28,6 @@ google-auth>=2.17.0
 google-auth-oauthlib>=1.0.0
 google-auth-httplib2>=0.2.0
 google-api-python-client>=2.88.0
+
+# Herramientas adicionales para búsqueda web
+tavily-python>=0.3.0
