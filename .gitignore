@@ -1,7 +1,6 @@
 # Archivos de credenciales de Google API
 credentials.json
-token.json
-drive_token.json
+*token.json
 
 # Entornos virtuales de Python
 .venv/
