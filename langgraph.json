@@ -3,7 +3,20 @@
   "graphs": {
     "plan_execute_bot": {
       "path": "plan_and_execute_bot.bot.graph:build_chatbot_graph",
-      "description": "Bot de planificación y ejecución con memoria conversacional"
+      "description": "🤖 Bot de Planificación y Ejecución\n\n🧠 Planner → ⚡ Executor (26 tools) → 🔄 Replanner\n\nHerramientas disponibles:\n🌤️ Weather (3) | 📋 Google Tasks (6) | 📁 Drive (6)\n📧 Gmail (6) | 📅 Calendar (7)\n\nCon memoria conversacional y re-planificación automática",
+      "title": "Plan & Execute Bot con 26 Herramientas",
+      "metadata": {
+        "visualization": {
+          "show_tools": true,
+          "theme": "modern",
+          "layout": "hierarchical"
+        }
+      }
+    },
+    "plan_execute_bot_with_visible_tools": {
+      "path": "plan_and_execute_bot.bot.graph_with_tools:build_chatbot_graph_with_visible_tools",
+      "description": "🔧 Versión con Herramientas Visibles\n\n🧠 Planner → ⚡ Executor → 🔄 Replanner\n           ↓\n🌤️ Weather  📋 Tasks  📁 Drive  📧 Gmail  📅 Calendar\n\nMuestra todas las 26 herramientas como nodos separados en el grafo",
+      "title": "Bot con Herramientas Visibles en el Grafo"
     }
   },
   "env": ".env"
