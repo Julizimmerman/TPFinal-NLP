@@ -26,6 +26,9 @@ class PlanExecute(TypedDict, total=False):
     # Memory fields
     conversation_history: Annotated[List[Dict[str, Any]], operator.add]
     session_id: Optional[str]
+    
+    # Intent classification for routing
+    intent: Optional[str]
 
 
 class Plan(BaseModel):

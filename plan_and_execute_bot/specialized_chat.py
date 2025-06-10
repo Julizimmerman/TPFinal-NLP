@@ -1,15 +1,22 @@
-"""Tiny REPL so you can chat from the terminal."""
+"""Chat específico para orquestadores especializados."""
 import asyncio
-from .specialized_graph import build_specialized_chatbot_graph
-from .memory import memory
+from bot.specialized_graph import build_specialized_chatbot_graph
+from bot.memory import memory
 
-chatbot = build_specialized_chatbot_graph()
-
-async def chat():
-    """Interfaz de chat con memoria de conversación."""
+async def specialized_chat():
+    """Chat usando orquestadores especializados."""
+    
+    print("🎯 CHAT CON ORQUESTADORES ESPECIALIZADOS")
+    print("=" * 50)
+    print("📧 Gmail | 📋 Tasks | 📅 Calendar | 📁 Drive | 🌤️ Weather | 💬 General")
+    print("=" * 50)
+    
+    # Construir el grafo especializado
+    chatbot = build_specialized_chatbot_graph()
+    
     # Crear una nueva sesión de conversación
     session_id = memory.create_session()
-    print(f"🧠 Nueva sesión de conversación iniciada: {session_id[:8]}...")
+    print(f"🧠 Nueva sesión iniciada: {session_id[:8]}...")
     print("💡 Escribe 'salir', 'exit' o presiona Ctrl+C para terminar")
     print("💡 Escribe '/nueva' para iniciar una nueva conversación")
     print("💡 Escribe '/historial' para ver el historial de la conversación")
@@ -33,7 +40,6 @@ async def chat():
             print("👋 ¡Hasta luego!")
             break
         elif user_input == '/nueva':
-            # Crear nueva sesión
             session_id = memory.create_session()
             state = {
                 "session_id": session_id,
@@ -43,7 +49,6 @@ async def chat():
             print(f"🧠 Nueva sesión iniciada: {session_id[:8]}...")
             continue
         elif user_input == '/historial':
-            # Mostrar historial de la conversación actual
             history = memory.get_conversation_history(session_id)
             if not history:
                 print("📝 No hay historial en esta conversación.")
@@ -51,21 +56,17 @@ async def chat():
                 print("📝 Historial de conversación:")
                 for msg in history:
                     role_display = "Usuario" if msg['role'] == 'user' else "Asistente"
-                    timestamp = msg['timestamp'][:19]  # Solo fecha y hora
+                    timestamp = msg['timestamp'][:19]
                     print(f"  [{timestamp}] {role_display}: {msg['content']}")
             continue
-        elif user_input == '/sesiones':
-            # Listar todas las sesiones
-            sessions = memory.list_sessions()
-            if not sessions:
-                print("📝 No hay sesiones guardadas.")
-            else:
-                print("📝 Sesiones disponibles:")
-                for sid in sessions:
-                    summary = memory.get_session_summary(sid)
-                    if summary.get('message_count', 0) > 0:
-                        first_msg = summary.get('first_user_message', 'Sin mensajes')[:50]
-                        print(f"  {sid[:8]}... ({summary['message_count']} mensajes) - {first_msg}...")
+        elif user_input == '/ayuda':
+            print("🎯 SERVICIOS DISPONIBLES:")
+            print("📧 Gmail: 'Envía un correo a...', 'Revisa mi bandeja'")
+            print("📋 Tasks: 'Agrega ... a mi lista', '¿Cuáles son mis tareas?'")
+            print("📅 Calendar: 'Crea una reunión...', '¿Qué tengo programado?'")
+            print("📁 Drive: 'Busca el documento...', '¿Dónde está mi...?'")
+            print("🌤️ Weather: '¿Cómo está el clima en...?', '¿Va a llover?'")
+            print("💬 General: Conversación normal")
             continue
         elif not user_input:
             continue
@@ -77,13 +78,26 @@ async def chat():
         state["input"] = user_input
         
         try:
-            # Procesar con el chatbot
-            print("🤔 Pensando...")
+            # Procesar con el chatbot especializado
+            print("🎯 Analizando y redirigiendo...")
             state = await chatbot.ainvoke(state)
             
             # Mostrar respuesta
             response = state.get("response", "No pude generar una respuesta.")
-            print("Bot >", response)
+            intent = state.get("intent", "")
+            
+            # Mostrar el servicio que se usó
+            service_emoji = {
+                "GMAIL": "📧",
+                "TASKS": "📋", 
+                "CALENDAR": "📅",
+                "DRIVE": "📁",
+                "WEATHER": "🌤️",
+                "GENERAL": "💬"
+            }
+            emoji = service_emoji.get(intent, "🤖")
+            
+            print(f"{emoji} Bot > {response}")
             
             # Limpiar response del estado para la siguiente iteración
             state.pop("response", None)
@@ -91,8 +105,7 @@ async def chat():
         except Exception as e:
             error_msg = f"❌ Error: {str(e)}"
             print("Bot >", error_msg)
-            # Guardar error en memoria también
             memory.add_message(session_id, "assistant", error_msg)
 
 if __name__ == "__main__":
-    asyncio.run(chat())
+    asyncio.run(specialized_chat()) 
