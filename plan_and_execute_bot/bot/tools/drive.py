@@ -18,7 +18,7 @@ SCOPES = [
 
 # Configurar rutas relativas al directorio del bot
 _CURRENT_DIR = Path(__file__).parent.parent.parent  # Subir 3 niveles desde bot/tools/drive.py
-CREDS_FILE = str(_CURRENT_DIR / 'credentials.json')
+CREDS_FILE = 'credentials.json'
 TOKEN_FILE = str(_CURRENT_DIR / 'drive_token.json')
 
 

@@ -11,7 +11,7 @@ from langchain.tools import tool
 
 # Configuración
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-CREDS_FILE = '../calendar/credentials.json'  # archivo JSON de credenciales de Google Calendar
+CREDS_FILE = 'credentials.json'  # archivo JSON de credenciales de Google Calendar
 TOKEN_FILE = 'calendar_token.json'        # donde se guardarán los tokens
 
 
