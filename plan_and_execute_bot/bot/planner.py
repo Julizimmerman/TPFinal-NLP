@@ -4,7 +4,7 @@ from .config import LLM_PLANNER
 from .schemas import Plan
 from .memory import memory
 
-def make_plan(user_input: str, session_id: str = None) -> Plan:
+async def make_plan(user_input: str, session_id: str = None) -> Plan:
     """Crear un plan considerando el contexto de conversación.
     
     Args:
@@ -26,7 +26,7 @@ def make_plan(user_input: str, session_id: str = None) -> Plan:
         input_with_context = f"{context}\n\nNueva consulta del usuario: {user_input}"
     
     res = PLANNER_PROMPT | LLM_PLANNER
-    plan_text = res.invoke({"input": input_with_context}).content
+    plan_text = (await res.ainvoke({"input": input_with_context})).content
     steps = [line.split(".", 1)[1].strip() for line in plan_text.splitlines()
              if "." in line]
     

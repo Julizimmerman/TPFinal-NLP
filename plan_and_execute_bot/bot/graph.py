@@ -13,19 +13,48 @@ from .responder import generate_final_response
 
 async def plan_step(state: PlanExecute):
     print("🔄 [DEBUG] Iniciando plan_step...")
-    print(f"🔄 [DEBUG] Input recibido: {state['input']}")
+    print(f"🔄 [DEBUG] Estado completo recibido: {state}")
+    
+    # Handle different input formats more robustly
+    user_input = None
+    
+    # Try different ways to get the user input
+    if "input" in state:
+        user_input = state["input"]
+    elif "messages" in state and state["messages"]:
+        # Handle LangGraph Studio format with messages
+        last_message = state["messages"][-1]
+        if isinstance(last_message, dict):
+            user_input = last_message.get("content", "")
+        else:
+            user_input = str(last_message)
+    elif "message" in state:
+        user_input = state["message"]
+    else:
+        # Look for any string value in the state
+        for key, value in state.items():
+            if isinstance(value, str) and value.strip():
+                user_input = value
+                break
+    
+    if not user_input:
+        print("🔄 [DEBUG] No se pudo encontrar input en el estado")
+        return {"response": "No se pudo obtener la consulta del usuario."}
+    
+    print(f"🔄 [DEBUG] Input procesado: {user_input}")
     
     # Obtener session_id del estado
     session_id = state.get("session_id")
     
     # Crear plan con contexto de conversación
-    plan = make_plan(state["input"], session_id)
+    plan = await make_plan(user_input, session_id)
     print(f"🔄 [DEBUG] Plan generado: {plan.steps}")
     
     # Inicializar conversation_history si no existe
     conversation_history = state.get("conversation_history", [])
     
     return {
+        "input": user_input,  # Ensure input is preserved in state
         "plan": plan.steps,
         "conversation_history": conversation_history
     }
@@ -150,7 +179,17 @@ async def replan_or_finish(state: PlanExecute):
     plan = state.get("plan", [])
     past_steps = state.get("past_steps", [])
     session_id = state.get("session_id")
+    
+    # Get original input with the same robust handling as plan_step
     original_input = state.get("input", "")
+    if not original_input and "messages" in state and state["messages"]:
+        last_message = state["messages"][-1]
+        if isinstance(last_message, dict):
+            original_input = last_message.get("content", "")
+        else:
+            original_input = str(last_message)
+    elif not original_input:
+        original_input = state.get("message", "")
     
     # Si no hay más pasos en el plan, generar una respuesta final usando el responder
     if not plan:
@@ -206,11 +245,11 @@ async def replan_or_finish(state: PlanExecute):
         return {"response": final_response}
     
     # Incluir contexto de conversación en el replanning
-    input_with_context = state["input"]
+    input_with_context = original_input
     if session_id:
         context = memory.get_context_for_planning(session_id, max_messages=5)
         if context != "Esta es una nueva conversación.":
-            input_with_context = f"{context}\n\nConsulta actual: {state['input']}"
+            input_with_context = f"{context}\n\nConsulta actual: {original_input}"
     
     prompt_chain = REPLANNER_PROMPT | LLM_PLANNER
     print("🔄 [DEBUG] Invocando replanner...")

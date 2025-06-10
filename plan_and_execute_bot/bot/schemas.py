@@ -1,5 +1,5 @@
 """Pydantic data shapes shared across the graph."""
-from typing import List, Tuple, Union, Dict, Any
+from typing import List, Tuple, Union, Dict, Any, Optional
 from typing_extensions import Annotated, TypedDict
 from pydantic import BaseModel, Field
 import operator
@@ -12,14 +12,20 @@ class ConversationMessage(BaseModel):
     timestamp: str = Field(description="Timestamp del mensaje")
 
 
-class PlanExecute(TypedDict):
-    input: str
+class PlanExecute(TypedDict, total=False):
+    # Core fields
+    input: Optional[str]
     plan: List[str]
     past_steps: Annotated[List[Tuple], operator.add]
-    response: str
-    # Nuevos campos para memoria
+    response: Optional[str]
+    
+    # Alternative input formats
+    messages: Optional[List[Dict[str, Any]]]
+    message: Optional[str]
+    
+    # Memory fields
     conversation_history: Annotated[List[Dict[str, Any]], operator.add]
-    session_id: str
+    session_id: Optional[str]
 
 
 class Plan(BaseModel):
