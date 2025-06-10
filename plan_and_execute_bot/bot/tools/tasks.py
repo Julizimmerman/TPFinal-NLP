@@ -12,7 +12,7 @@ from langchain.tools import tool
 # 1) Configuración
 SCOPES = ['https://www.googleapis.com/auth/tasks']
 CREDS_FILE = 'credentials.json'  # tu JSON con "installed":{...}
-TOKEN_FILE = 'token.json'        # donde se guardarán los tokens
+TOKEN_FILE = 'tasks_token.json'        # donde se guardarán los tokens
 
 def get_service():
     """Obtiene el servicio de Google Tasks con manejo mejorado de errores."""
