@@ -1,11 +1,20 @@
 """Módulo para generar respuestas finales pulidas usando LLM."""
 from typing import List, Tuple, Optional
 from langchain.prompts import ChatPromptTemplate
+from langchain.prompts import PromptTemplate
 from .config import LLM_PLANNER  # Reutilizamos el LLM del planner
 from .memory import memory
+from datetime import datetime, timezone, timedelta
+BA = timezone(timedelta(hours=-3))      # tu huso horario
+TODAY = datetime.now(BA).strftime("%-d de %B de %Y")
+
 
 # Prompt para generar respuesta final
-RESPONDER_PROMPT = ChatPromptTemplate.from_template("""
+RESPONDER_BASE = """
+                                                    
+*ATENCIÓN IMPORTANTE*: 
+    Ignora cualquier mención anterior al día de hoy en la conversación; la fecha de hoy es exactamente {TODAY}.
+                                                    
 Eres un asistente útil que debe generar una respuesta final clara y bien estructurada.
 
 Tienes la siguiente información:
@@ -22,7 +31,13 @@ Tu tarea es generar una respuesta que:
 6. Si no se pudo obtener la información, explica claramente por qué
 
 Genera SOLO la respuesta final, sin explicaciones adicionales sobre el proceso.
-""")
+"""
+
+RESPONDER_PROMPT = (
+    PromptTemplate
+    .from_template(RESPONDER_BASE)
+    .partial(TODAY=TODAY)
+)
 
 async def generate_final_response(
     query: str,

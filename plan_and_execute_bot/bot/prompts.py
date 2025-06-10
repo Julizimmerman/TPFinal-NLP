@@ -1,7 +1,15 @@
 from langchain.prompts import PromptTemplate
+from datetime import datetime, timezone, timedelta
+BA = timezone(timedelta(hours=-3))      # tu huso horario
+TODAY = datetime.now(BA).strftime("%-d de %B de %Y")
 
-PLANNER_PROMPT = PromptTemplate.from_template(
-    """Eres el módulo de planificación de un asistente de IA con memoria de conversación.
+
+
+BASE_PROMPT = """Eres el módulo de planificación de un asistente de IA con memoria de conversación.
+
+*ATENCIÓN IMPORTANTE*: 
+Ignora cualquier mención anterior al día de hoy en la conversación; la fecha de hoy es exactamente {TODAY}.
+
     
 Contexto y solicitud del usuario: {input}
 
@@ -16,11 +24,24 @@ Ejemplos:
 - Si el usuario pregunta "¿Cuál es el clima en Madrid?" → "1. Obtener el clima actual de Madrid"
 - Si el usuario luego pregunta "¿Y mañana?" → "1. Obtener el pronóstico del clima para Madrid para mañana"
 - Si el usuario pregunta "¿Qué tal Barcelona?" → "1. Obtener el clima actual de Barcelona"
+- Si el usuario dice "Enviale un mail a Maria Lopez para confirmar la reunion" - 1. Construir la direccion de correo de Maria lopez: "mlopez@udesa.edu.ar" 
+                                                                                 2. Usar Gmail.send_message con destinatario "mlopez@udesa.edu.ar" y contenido apropiado
+                                                                                 3. Responder al usuario confirmando que el mail se envió
+- Si el usuario dice "Enviale un mail a marialopez@gmail.com" - 1. Usar Gmail.send_message con destinatario "marialopez@gmail.com" y contenido apropiado
+                                                                2. Responder al usuario confirmando que el mail se envió
 """
+
+
+PLANNER_PROMPT = (
+    PromptTemplate
+    .from_template(BASE_PROMPT)
+    .partial(TODAY=TODAY)
 )
 
 REPLANNER_PROMPT = PromptTemplate.from_template(
     """Estás actualizando un plan de múltiples pasos con conciencia de conversación.
+
+
 Solicitud del usuario: {input}
 
 Plan original:
@@ -36,10 +57,38 @@ Devuelve CUALQUIERA DE LAS DOS OPCIONES:
 1) "RESPUESTA: <respuesta final>" si la tarea está completa, O
 2) "PLAN: <nuevo plan numerado>" si quedan más pasos.
 NO repitas pasos completados.
+
+Ejemplo:
+- Plan original:
+  1. Usar Calendar.create_event para crear "Reunión con Carlos García" mañana a las 10 AM.
+  2. Enviar email de confirmación a Carlos García.
+- Usuario dice: "Finalmente, que la reunión sea con Ana Fernández."  
+  → Salida:
+  PLAN:
+  1. **Construir email de Ana Fernández: "afernandez@udesa.edu.ar".**  
+  2. Usar Calendar.search_event para buscar evento "Reunión con Carlos García" mañana.  
+  3. Usar Calendar.update_event con el ID obtenido para cambiar título a "Reunión con Ana Fernández".  
+  4. Usar Gmail.send_message para notificar a "afernandez@udesa.edu.ar" que la reunión fue reasignada.  
+  5. Responder al usuario confirmando la reasignación.  
+
+Ejemplo:
+- Plan original:
+  1. Usar Calendar.create_event para crear "Reunión con Carlos García" mañana a las 10 AM.
+  2. Enviar email de confirmación a Carlos García.
+- Usuario dice: "Finalmente, que la reunión sea con juanita@gmail.com."  
+  → Salida:
+  PLAN:
+  2. Usar Calendar.search_event para buscar evento "Reunión con Carlos García" mañana.  
+  3. Usar Calendar.update_event con el ID obtenido para cambiar título a "Reunión con Juanita".  
+  4. Usar Gmail.send_message para notificar a "juanita@gmail.com" que la reunión fue reasignada.  
+  5. Responder al usuario confirmando la reasignación. 
 """
 )
 
-EXECUTOR_PREFIX = """Eres el agente de ejecución con conciencia de conversación.
+EXECUTOR_PREFIX = f"""Eres el agente de ejecución con conciencia de conversación.
+
+*ATENCIÓN IMPORTANTE*: 
+    Ignora cualquier mención anterior al día de hoy en la conversación; la fecha de hoy es exactamente {TODAY}.
 
 INSTRUCCIONES IMPORTANTES:
 - Lleva a cabo la subtarea asignada y responde de manera concisa.
@@ -54,4 +103,11 @@ EJEMPLOS DE USO MÚLTIPLE:
 - "Listar tareas y completar X" → usa list_tasks luego complete_task
 - "Buscar tareas con palabra X y eliminar la primera" → usa search_tasks luego delete_task
 - "Obtener clima y consejo de ropa" → usa get_weather luego get_clothing_advice
+
+- Si en el paso aparece el nombre y apellido de alguna persona en contexto de correo o calendario, **construye su dirección de e-mail** como: [primera letra del nombre + apellido completo + "@udesa.edu.ar"]
+Ejemplo: "Alejandro Ramos" → "aramos@udesa.edu.ar".
+
+- Si en el paso aparece la direccion de correo electrónico en lugar de nombres y apellidos, mantene la direccion de e-mail que propuso el usuario. 
+Ejemplo: "juanita@gmail.com"  → "juanita@gmail.com"
+
 """
