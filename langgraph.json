@@ -12,11 +12,6 @@
           "layout": "hierarchical"
         }
       }
-    },
-    "plan_execute_bot_with_visible_tools": {
-      "path": "plan_and_execute_bot.bot.graph_with_tools:build_chatbot_graph_with_visible_tools",
-      "description": "🔧 Versión con Herramientas Visibles\n\n🧠 Planner → ⚡ Executor → 🔄 Replanner\n           ↓\n🌤️ Weather  📋 Tasks  📁 Drive  📧 Gmail  📅 Calendar\n\nMuestra todas las 26 herramientas como nodos separados en el grafo",
-      "title": "Bot con Herramientas Visibles en el Grafo"
     }
   },
   "env": ".env"
