@@ -48,16 +48,36 @@ class ConversationMemory:
         except Exception as e:
             print(f"⚠️ [MEMORY] Error guardando memoria: {e}")
     
-    def create_session(self) -> str:
+    def create_session(self, session_id: str = None) -> str:
         """Crear una nueva sesión de conversación.
         
+        Args:
+            session_id: ID personalizado para la sesión (usado para WhatsApp)
+        
         Returns:
-            ID de la nueva sesión
+            ID de la sesión
         """
-        session_id = str(uuid.uuid4())
-        self.sessions[session_id] = []
-        print(f"🧠 [MEMORY] Nueva sesión creada: {session_id}")
+        if session_id is None:
+            session_id = str(uuid.uuid4())
+        
+        if session_id not in self.sessions:
+            self.sessions[session_id] = []
+            print(f"🧠 [MEMORY] Nueva sesión creada: {session_id}")
+        else:
+            print(f"🧠 [MEMORY] Sesión existente reutilizada: {session_id}")
+        
         return session_id
+    
+    def get_or_create_session(self, session_id: str) -> str:
+        """Obtener una sesión existente o crear una nueva.
+        
+        Args:
+            session_id: ID de la sesión
+            
+        Returns:
+            ID de la sesión
+        """
+        return self.create_session(session_id)
     
     def add_message(self, session_id: str, role: str, content: str):
         """Agregar un mensaje al historial de la sesión.
