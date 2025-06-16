@@ -11,8 +11,11 @@ from langchain.tools import tool
 
 # Configuración
 SCOPES = ['https://www.googleapis.com/auth/calendar']
-CREDS_FILE = 'credentials.json'  # archivo JSON de credenciales de Google Calendar
-TOKEN_FILE = 'calendar_token.json'        # donde se guardarán los tokens
+
+# Configurar rutas relativas al directorio raíz del proyecto
+_CURRENT_DIR = Path(__file__).parent.parent.parent.parent  # Subir 4 niveles desde bot/tools/calendar.py
+CREDS_FILE = str(_CURRENT_DIR / 'credentials.json')
+TOKEN_FILE = str(_CURRENT_DIR / 'calendar_token.json')
 
 
 def get_calendar_service():

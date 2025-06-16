@@ -11,8 +11,11 @@ from langchain.tools import tool
 
 # 1) Configuración
 SCOPES = ['https://www.googleapis.com/auth/tasks']
-CREDS_FILE = 'credentials.json'  # tu JSON con "installed":{...}
-TOKEN_FILE = 'tasks_token.json'        # donde se guardarán los tokens
+
+# Configurar rutas relativas al directorio raíz del proyecto
+_CURRENT_DIR = Path(__file__).parent.parent.parent.parent  # Subir 4 niveles desde bot/tools/tasks.py
+CREDS_FILE = str(_CURRENT_DIR / 'credentials.json')
+TOKEN_FILE = str(_CURRENT_DIR / 'tasks_token.json')
 
 def get_service():
     """Obtiene el servicio de Google Tasks con manejo mejorado de errores."""
