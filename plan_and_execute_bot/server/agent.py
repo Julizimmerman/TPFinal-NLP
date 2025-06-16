@@ -2,6 +2,7 @@ import logging
 import hashlib
 import sys
 import os
+import asyncio
 
 # Agregar el directorio del bot al path para importar los módulos
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -59,20 +60,43 @@ class Agent:
             
             LOGGER.info(f"Processing message with chatbot: '{user_message}'")
             
-            # Process with the chatbot
-            result_state = await self.chatbot.ainvoke(state)
-            
-            # Extract response
-            response = result_state.get("response", "No pude generar una respuesta.")
-            
-            # Add bot response to memory
-            memory.add_message(session_id, "assistant", response)
-            
-            LOGGER.info(f"Generated response: {response}")
-            return response
+            # Process with the chatbot with timeout
+            try:
+                # Agregar timeout para evitar que el grafo se quede colgado
+                result_state = await asyncio.wait_for(
+                    self.chatbot.ainvoke(state), 
+                    timeout=120.0  # 2 minutos máximo
+                )
+                
+                # Extract response
+                response = result_state.get("response")
+                
+                # Verificar que tenemos una respuesta válida
+                if not response or not isinstance(response, str) or not response.strip():
+                    LOGGER.warning("El grafo no generó una respuesta válida")
+                    response = "Disculpa, no pude procesar completamente tu solicitud. ¿Podrías reformular tu pregunta?"
+                
+                # Add bot response to memory
+                memory.add_message(session_id, "assistant", response)
+                
+                LOGGER.info(f"Generated response: {response}")
+                return response
+                
+            except asyncio.TimeoutError:
+                LOGGER.error("El procesamiento del mensaje superó el tiempo límite")
+                error_msg = "Disculpa, tu solicitud está tomando demasiado tiempo en procesarse. Por favor, intenta con una consulta más específica."
+                memory.add_message(session_id, "assistant", error_msg)
+                return error_msg
+                
+            except Exception as graph_error:
+                LOGGER.error(f"Error específico en el grafo: {str(graph_error)}", exc_info=True)
+                # Intentar respuesta de emergencia básica
+                fallback_msg = self._generate_fallback_response(user_message)
+                memory.add_message(session_id, "assistant", fallback_msg)
+                return fallback_msg
             
         except Exception as e:
-            error_msg = f"Ocurrió un error al procesar tu mensaje: {str(e)}"
+            error_msg = f"Ocurrió un error al procesar tu mensaje. Por favor, inténtalo de nuevo."
             LOGGER.error(f"Error during invoke: {str(e)}", exc_info=True)
             
             # Add error to memory
@@ -82,4 +106,20 @@ class Agent:
                 pass  # Don't fail if memory fails
             
             return error_msg
+    
+    def _generate_fallback_response(self, user_message: str) -> str:
+        """Genera una respuesta de emergencia cuando el grafo principal falla."""
+        user_lower = user_message.lower()
+        
+        # Respuestas específicas para casos comunes
+        if any(word in user_lower for word in ["clima", "weather", "temperatura"]):
+            return "No pude obtener la información del clima en este momento. Por favor, inténtalo de nuevo más tarde."
+        elif any(word in user_lower for word in ["tarea", "task", "crear", "hacer"]):
+            return "No pude acceder a las tareas en este momento. Por favor, inténtalo de nuevo más tarde."
+        elif any(word in user_lower for word in ["reunión", "meeting", "calendario", "calendar"]):
+            return "No pude acceder al calendario en este momento. Por favor, inténtalo de nuevo más tarde."
+        elif any(word in user_lower for word in ["mail", "email", "correo", "enviar"]):
+            return "No pude acceder al correo en este momento. Por favor, inténtalo de nuevo más tarde."
+        else:
+            return "Disculpa, no pude procesar tu solicitud en este momento. Por favor, inténtalo de nuevo o reformula tu pregunta."
     

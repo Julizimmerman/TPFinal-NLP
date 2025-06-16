@@ -114,12 +114,24 @@ async def execute_step(state: PlanExecute):
     
     print(f"🔄 [DEBUG] Ejecutando {len(steps_to_execute)} pasos: {steps_to_execute}")
     
-    # Detectar bucles - si hemos ejecutado alguna de estas tareas más de 2 veces
+    # Detectar bucles - si hemos ejecutado alguna de estas tareas más de 1 vez
     for task in steps_to_execute:
         task_count = sum(1 for step, _ in past_steps if step == task)
-        if task_count >= 2:
+        if task_count >= 1:  # Reducido de 2 a 1 para detectar bucles más temprano
             print(f"🔄 [DEBUG] Detectado bucle en la tarea: {task}")
-            return {"response": f"No se pudo completar la tarea '{task}' después de múltiples intentos. Por favor, reformula tu consulta."}
+            
+            # Generar una respuesta más útil usando el responder
+            from .responder import generate_final_response
+            session_id = state.get("session_id")
+            original_input = state.get("input", "")
+            
+            final_response = await generate_final_response(
+                query=original_input,
+                tool_result=f"No se pudo completar la tarea '{task}' después de múltiples intentos.",
+                session_id=session_id,
+                past_steps=past_steps
+            )
+            return {"response": final_response}
     
     plan_str = "\n".join(f"{i+1}. {step}" for i, step in enumerate(plan))
     
@@ -223,7 +235,7 @@ async def replan_or_finish(state: PlanExecute):
     print(f"🔄 [DEBUG] Past steps: {past}")
     
     # Limitar el número de pasos para evitar bucles infinitos
-    if len(past_steps) >= 8:  # Aumentado de 5 a 8 para permitir más operaciones
+    if len(past_steps) >= 5:  # Reducido de 8 a 5 para evitar bucles largos
         print("🔄 [DEBUG] Demasiados pasos ejecutados, finalizando con responder...")
         
         # Obtener el mejor resultado disponible

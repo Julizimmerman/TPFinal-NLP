@@ -102,6 +102,26 @@ async def whatsapp_reply_twilio(request: Request):
         LOGGER.exception("Unhandled exception processing WhatsApp message")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+@APP.post("/whatsapp-test")
+async def whatsapp_test(request: Request):
+    """Endpoint de prueba sin validación de firma."""
+    try:
+        LOGGER.info("Received test WhatsApp message")
+        xml = await WSP_AGENT.handle_message(request)
+        LOGGER.info("Successfully processed test WhatsApp message")
+        return Response(content=xml, media_type="application/xml")
+    except Exception as e:
+        LOGGER.exception("Error in test endpoint")
+        return Response(content="<Response><Message>Error en prueba</Message></Response>", media_type="application/xml")
+
+@APP.post("/test-simple")
+async def test_simple():
+    """Endpoint de prueba muy simple."""
+    return Response(
+        content='<?xml version="1.0" encoding="UTF-8"?><Response><Message>Mensaje de prueba simple</Message></Response>',
+        media_type="application/xml"
+    )
+
 
 if __name__ == "__main__":
     import uvicorn

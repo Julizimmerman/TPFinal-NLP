@@ -42,6 +42,26 @@ class WhatsAppAgentTwilio(WhatsAppAgent):
         if not (TWILIO_AUTH_TOKEN and TWILIO_ACCOUNT_SID):
             raise ValueError("Twilio credentials are not configured")
         self.agent = Agent()
+    
+    def _clean_whatsapp_text(self, text: str) -> str:
+        """Limpia el texto para que sea compatible con WhatsApp/Twilio."""
+        import re
+        
+        # Remover markdown bold (**texto**)
+        text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
+        
+        # Remover markdown italic (*texto*)
+        text = re.sub(r'\*(.*?)\*', r'\1', text)
+        
+        # Limpiar caracteres problemáticos para XML
+        text = text.replace('&', '&amp;')
+        text = text.replace('<', '&lt;')
+        text = text.replace('>', '&gt;')
+        
+        # Normalizar saltos de línea
+        text = re.sub(r'\n+', '\n', text)
+        
+        return text.strip()
 
     async def handle_message(self, request: Request) -> str:
         form = await request.form()
@@ -76,8 +96,33 @@ class WhatsAppAgentTwilio(WhatsAppAgent):
                 {"image_url": {"url": img["data_uri"]}} for img in images
             ]
 
-        reply = await self.agent.invoke(**input_data)
+        # Procesar mensaje con el agente con manejo robusto de errores
+        reply = None
+        try:
+            reply = await self.agent.invoke(**input_data)
+        except Exception as e:
+            LOGGER.error(f"❌ Error crítico en el agente: {e}", exc_info=True)
+            # Respuesta de emergencia si todo lo demás falla
+            reply = "Lo siento, estoy experimentando dificultades técnicas. Por favor, inténtalo de nuevo en unos momentos."
+        
+        # Asegurar que tenemos una respuesta válida
+        if not reply or not isinstance(reply, str) or not reply.strip():
+            LOGGER.warning("El agente no devolvió una respuesta válida")
+            reply = "Disculpa, no pude procesar tu mensaje. Por favor, inténtalo de nuevo."
+        
+        # Limpiar markdown que puede causar problemas en WhatsApp
+        reply = self._clean_whatsapp_text(reply)
+        
+        # Limitar la longitud de la respuesta para WhatsApp
+        if len(reply) > 1600:  # WhatsApp tiene límite de caracteres
+            reply = reply[:1600] + "..."
+            LOGGER.warning("Respuesta truncada por límite de WhatsApp")
 
+        # Crear respuesta TwiML
         twiml = MessagingResponse()
         twiml.message(reply)
-        return str(twiml)
+        
+        twiml_str = str(twiml)
+        LOGGER.info(f"Enviando respuesta de {len(reply)} caracteres")
+        LOGGER.info(f"TwiML generado: {twiml_str}")
+        return twiml_str
