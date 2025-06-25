@@ -68,11 +68,13 @@ async def generate_final_response(
     
     # Si tenemos past_steps, usar el resultado más relevante
     if past_steps:
-        # Tomar el último resultado que parezca más completo
-        for step, result in reversed(past_steps):
-            if result and len(result.strip()) > 10:  # Resultado no vacío y con contenido
-                tool_result = result
-                break
+        # Unir todos los resultados relevantes en un solo string
+        combined_results = []
+        for step, result in past_steps:
+            if result and len(result.strip()) > 10:
+                combined_results.append(result.strip())
+        if combined_results:
+            tool_result = "\n".join(combined_results)
     
     print(f"🔄 [DEBUG] Contexto de conversación: {conversation_context}")
     
