@@ -142,6 +142,10 @@ EXECUTOR_PREFIX = f"""Eres el agente de ejecución con conciencia de conversaci�
     Ignora cualquier mención anterior al día de hoy en la conversación; la fecha de hoy es exactamente {TODAY}.
 
 INSTRUCCIONES IMPORTANTES:
+- Si la consulta del usuario es clara y hay un solo resultado que coincide, ejecuta la acción directamente y responde con el resultado.
+- Si la consulta del usuario menciona "el último", "más reciente", "más nuevo" o similar, selecciona automáticamente el mensaje más reciente entre los candidatos y ejecuta la acción, sin pedir confirmación.
+- Solo pide confirmación al usuario si hay múltiples candidatos igualmente válidos o si la acción podría afectar a varios elementos y no es posible decidir automáticamente.
+- No pidas confirmación si la acción es segura y el resultado es único.
 - Lleva a cabo la subtarea asignada y responde de manera concisa.
 - Si la tarea se refiere al contexto de conversación anterior, usa esa información apropiadamente.
 - Si te piden ejecutar múltiples pasos relacionados, usa múltiples herramientas en secuencia.

@@ -47,7 +47,7 @@ def list_messages(query: str = None, label_ids: List[str] = None, max_results: i
         max_results: Número máximo de resultados (opcional, por defecto 10)
         
     Returns:
-        Lista de mensajes que coinciden con los criterios
+        Lista de mensajes que coinciden con los criterios de búsqueda
     """
     try:
         service = get_gmail_service()
@@ -294,22 +294,44 @@ def delete_message(message_id: str, permanent: bool = False) -> str:
 
 
 @tool
-def modify_labels(message_id: str, add_label_ids: List[str] = None, remove_label_ids: List[str] = None) -> str:
+def modify_labels(message_id: str, add_labels: List[str] = None, remove_labels: List[str] = None) -> str:
     """Añade o quita labels (ej: marcar leído/no leído).
     
     Args:
         message_id: ID del mensaje a modificar
-        add_label_ids: IDs de etiquetas a añadir (opcional)
-        remove_label_ids: IDs de etiquetas a quitar (opcional)
+        add_labels: Nombres o IDs de etiquetas a añadir (opcional)
+        remove_labels: Nombres o IDs de etiquetas a quitar (opcional)
         
     Returns:
         Confirmación de la modificación de etiquetas
     """
     try:
         service = get_gmail_service()
+        print(f"[DEBUG][modify_labels] message_id: {message_id}")
+        print(f"[DEBUG][modify_labels] add_labels (input): {add_labels}")
+        print(f"[DEBUG][modify_labels] remove_labels (input): {remove_labels}")
         
-        if not add_label_ids and not remove_label_ids:
+        if not add_labels and not remove_labels:
             return "❌ Debe especificar al menos una etiqueta para añadir o quitar"
+        
+        # Convertir nombres de etiquetas a IDs si es necesario
+        def to_label_id(label):
+            print(f"[DEBUG][modify_labels] Procesando label: {label}")
+            # Si parece un ID (empieza con 'Label_'), úsalo tal cual
+            if label.startswith("Label_"):
+                print(f"[DEBUG][modify_labels] '{label}' parece un ID, se usa tal cual.")
+                return label
+            # Si es un nombre, busca el ID
+            label_id = get_label_id_by_name(label)
+            print(f"[DEBUG][modify_labels] Mapeo nombre->ID: '{label}' -> '{label_id}'")
+            if not label_id:
+                raise Exception(f"No se encontró la etiqueta '{label}' en tu cuenta de Gmail.")
+            return label_id
+        
+        add_label_ids = [to_label_id(l) for l in add_labels] if add_labels else None
+        remove_label_ids = [to_label_id(l) for l in remove_labels] if remove_labels else None
+        print(f"[DEBUG][modify_labels] add_label_ids (final): {add_label_ids}")
+        print(f"[DEBUG][modify_labels] remove_label_ids (final): {remove_label_ids}")
         
         # Preparar modificaciones
         body = {}
@@ -317,6 +339,7 @@ def modify_labels(message_id: str, add_label_ids: List[str] = None, remove_label
             body['addLabelIds'] = add_label_ids
         if remove_label_ids:
             body['removeLabelIds'] = remove_label_ids
+        print(f"[DEBUG][modify_labels] body enviado a la API: {body}")
         
         # Aplicar modificaciones
         result = service.users().messages().modify(
@@ -324,16 +347,18 @@ def modify_labels(message_id: str, add_label_ids: List[str] = None, remove_label
             id=message_id,
             body=body
         ).execute()
+        print(f"[DEBUG][modify_labels] Resultado de la API: {result}")
         
         # Preparar mensaje de confirmación
         actions = []
         if add_label_ids:
-            actions.append(f"añadidas: {', '.join(add_label_ids)}")
+            actions.append(f"añadidas: {', '.join(add_labels)}")
         if remove_label_ids:
-            actions.append(f"quitadas: {', '.join(remove_label_ids)}")
+            actions.append(f"quitadas: {', '.join(remove_labels)}")
         
         return f"✅ Etiquetas {' y '.join(actions)} exitosamente en el mensaje {message_id}"
     except Exception as e:
+        print(f"[DEBUG][modify_labels] Error: {e}")
         return f"❌ Error al modificar las etiquetas: {str(e)}"
 
 
@@ -362,3 +387,20 @@ def extract_message_body(payload):
             body = base64.urlsafe_b64decode(payload['body']['data']).decode('utf-8')
     
     return body
+
+def get_label_id_by_name(label_name: str) -> Optional[str]:
+    """
+    Devuelve el ID de una etiqueta de Gmail dado su nombre.
+    Si no existe, retorna None.
+    """
+    print(f"[DEBUG][get_label_id_by_name] Buscando ID para nombre: '{label_name}'")
+    service = get_gmail_service()
+    labels = service.users().labels().list(userId='me').execute().get('labels', [])
+    print(f"[DEBUG][get_label_id_by_name] Etiquetas disponibles: {[l['name'] for l in labels]}")
+    for label in labels:
+        print(f"[DEBUG][get_label_id_by_name] Comparando '{label['name'].lower()}' con '{label_name.lower()}'")
+        if label['name'].lower() == label_name.lower():
+            print(f"[DEBUG][get_label_id_by_name] ¡Match! ID: {label['id']}")
+            return label['id']
+    print(f"[DEBUG][get_label_id_by_name] No se encontró la etiqueta '{label_name}'")
+    return None
