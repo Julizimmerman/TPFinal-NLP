@@ -18,7 +18,8 @@ from .tools.tasks import (
     complete_task,
     delete_task,
     edit_task,
-    search_tasks
+    search_tasks,
+    add_subtask
 )
 # Importar herramientas de Google Drive (nuevas)
 from .tools.drive import (
@@ -62,6 +63,7 @@ TOOLS = [
     delete_task,
     edit_task,
     search_tasks,
+    add_subtask,
     # Herramientas de Google Drive (6 nuevas herramientas)
     search_files,
     get_file_metadata,

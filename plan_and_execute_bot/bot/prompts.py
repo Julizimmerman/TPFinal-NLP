@@ -24,6 +24,7 @@ AVAILABLE_TOOLS = """
 - delete_task(task_title): Eliminar tarea
 - edit_task(task_title, new_title=None, new_notes=None): Editar tarea existente
 - search_tasks(keyword): Buscar tareas por palabra clave
+- add_subtask(parent_task_title, subtask_title): Añadir subtarea a una tarea existente
 
 📁 GOOGLE DRIVE:
 - search_files(query, page_size=10): Buscar archivos/carpetas
@@ -152,12 +153,14 @@ INSTRUCCIONES IMPORTANTES:
 - Para tareas como "crear varias tareas", "listar y luego completar", etc., usa las herramientas necesarias en orden.
 - No te limites a una sola herramienta si la tarea requiere varios pasos.
 - Ejecuta todas las acciones solicitadas antes de responder.
+- IMPORTANTE: Si ves add_subtask en el paso, úsalo exactamente como está especificado. NO lo conviertas en create_task.
 
 EJEMPLOS DE USO MÚLTIPLE:
 - "Crear tarea X y tarea Y" → usa create_task dos veces
 - "Listar tareas y completar X" → usa list_tasks luego complete_task
 - "Buscar tareas con palabra X y eliminar la primera" → usa search_tasks luego delete_task
 - "Obtener clima y consejo de ropa" → usa get_weather luego get_clothing_advice
+- "Añadir subtarea X a tarea Y" → usa add_subtask('Y', 'X') UNA SOLA VEZ (NO crear tareas separadas)
 
 - Si en el paso aparece el nombre y apellido de alguna persona en contexto de correo o calendario, **construye su dirección de e-mail** como: [primera letra del nombre + apellido completo + "@udesa.edu.ar"]
 Ejemplo: "Alejandro Ramos" → "aramos@udesa.edu.ar".

@@ -47,9 +47,11 @@ def get_task_id_by_title(title: str) -> str:
     """Función auxiliar para obtener el ID de una tarea por su título."""
     try:
         service = get_service()
+        # Solo buscar en tareas principales (sin parent), no en subtareas
         result = service.tasks().list(tasklist='@default').execute()
         for task in result.get("items", []):
-            if task["title"].lower() == title.lower():
+            # Solo considerar tareas que NO tienen parent (tareas principales)
+            if not task.get("parent") and task["title"].lower() == title.lower():
                 return task["id"]
         return None
     except Exception as e:
@@ -213,5 +215,71 @@ def search_tasks(keyword: str) -> str:
         return f"❌ Google Tasks no está configurado: {str(e)}"
     except Exception as e:
         return f"❌ Error al buscar tareas: {str(e)}"
+
+@tool
+def add_subtask(parent_task_title: str, subtask_title: str) -> str:
+    """Añade una subtarea a una tarea existente.
+    
+    Args:
+        parent_task_title: El título de la tarea padre
+        subtask_title: El título de la subtarea a crear
+        
+    Returns:
+        Mensaje confirmando la creación de la subtarea
+    """
+    print(f"🔄 [DEBUG] Adding subtask '{subtask_title}' to parent '{parent_task_title}'")
+    try:
+        # Primero listar todas las tareas principales para debug
+        service = get_service()
+        all_tasks = service.tasks().list(tasklist='@default').execute()
+        main_tasks = [t for t in all_tasks.get("items", []) if not t.get("parent")]
+        print(f"🔍 [DEBUG] Available main tasks: {[t['title'] for t in main_tasks]}")
+        
+        # Obtener el ID de la tarea padre
+        parent_task_id = get_task_id_by_title(parent_task_title)
+        if not parent_task_id:
+            print(f"❌ [DEBUG] Parent task not found: '{parent_task_title}'")
+            print(f"❌ [DEBUG] Looking for exact match with available tasks...")
+            return f"No se encontró la tarea padre: «{parent_task_title}». Tareas disponibles: {[t['title'] for t in main_tasks]}"
+        
+        print(f"✅ [DEBUG] Found parent task ID: {parent_task_id}")
+        
+        # Verificar si ya existe una subtarea con el mismo título bajo esta tarea padre
+        # Obtener todas las tareas (incluyendo subtareas) y filtrar por parent
+        all_tasks_response = service.tasks().list(tasklist='@default', showHidden=True).execute()
+        all_tasks = all_tasks_response.get("items", [])
+        existing_subtasks = [task for task in all_tasks if task.get("parent") == parent_task_id]
+        existing_titles = [sub["title"].lower() for sub in existing_subtasks]
+        print(f"🔍 [DEBUG] Existing subtasks: {[sub['title'] for sub in existing_subtasks]}")
+        
+        # Si ya existe una subtarea con el mismo título, agregar un sufijo
+        original_title = subtask_title
+        counter = 1
+        while subtask_title.lower() in existing_titles:
+            subtask_title = f"{original_title} ({counter})"
+            counter += 1
+        
+        if subtask_title != original_title:
+            print(f"📝 [DEBUG] Changed subtask title from '{original_title}' to '{subtask_title}' to avoid duplicates")
+        
+        # Crear la subtarea (parent va solo en el parámetro, no en el body)
+        body = {
+            'title': subtask_title
+        }
+        print(f"🚀 [DEBUG] Creating subtask with body: {body} and parent: {parent_task_id}")
+        subtask = service.tasks().insert(tasklist='@default', body=body, parent=parent_task_id).execute()
+        print(f"✅ [DEBUG] Subtask created successfully: {subtask['id']}")
+        
+        return f"Subtarea creada: «{subtask['title']}» bajo la tarea «{parent_task_title}» (id: {subtask['id']})"
+    except FileNotFoundError as e:
+        error_msg = f"❌ Google Tasks no está configurado: {str(e)}"
+        print(f"❌ [DEBUG] FileNotFoundError: {error_msg}")
+        return error_msg
+    except Exception as e:
+        error_msg = f"❌ Error al crear la subtarea: {str(e)}"
+        print(f"❌ [DEBUG] Exception in add_subtask: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"❌ [DEBUG] Traceback: {traceback.format_exc()}")
+        return error_msg
 
 
