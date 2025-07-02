@@ -12,8 +12,11 @@ from langchain.tools import tool
 
 # --- CONFIGURACIÓN OAuth ---
 SCOPES = [
+    'https://www.googleapis.com/auth/drive',
     'https://www.googleapis.com/auth/drive.file',
-    'https://www.googleapis.com/auth/documents'
+    'https://www.googleapis.com/auth/drive.file',
+    'https://www.googleapis.com/auth/drive.metadata.readonly',
+    'https://www.googleapis.com/auth/documents', 
 ]
 
 # Configurar rutas relativas al directorio raíz del proyecto
@@ -267,6 +270,29 @@ def delete_file(file_id: str, permanent: bool = False) -> str:
         return f"✅ Archivo '{file_name}' {action} exitosamente"
     except Exception as e:
         return f"❌ Error al eliminar el archivo: {str(e)}"
+
+
+@tool
+def share_file(file_id: str, email: str, role: str = "reader", send_notification_email: bool = False) -> str:
+     """
+     Comparte un archivo o carpeta de Drive con otro usuario.
+     """
+     try:
+         service = get_drive_service()
+         permission = {
+             "type": "user",
+             "role": role,
+             "emailAddress": email
+         }
+         service.permissions().create(
+             fileId=file_id,
+             body=permission,
+             sendNotificationEmail=send_notification_email,
+             supportsAllDrives=True
+         ).execute()
+         return f"✅ Se compartió el archivo/carpeta (ID: {file_id}) con {email} como {role}"
+     except Exception as e:
+         return f"❌ Error al compartir el archivo: {e}"
 
 
 
