@@ -116,11 +116,16 @@ async def execute_step(state: PlanExecute):
     
     print(f"🔄 [DEBUG] Ejecutando {len(steps_to_execute)} pasos: {steps_to_execute}")
     
-    # Detectar bucles - si hemos ejecutado alguna de estas tareas más de 1 vez
+    # Detectar bucles de manera más inteligente
+    # Solo finalizar si una tarea específica ha fallado múltiples veces
     for task in steps_to_execute:
-        task_count = sum(1 for step, _ in past_steps if step == task)
-        if task_count >= 1:  # Reducido de 2 a 1 para detectar bucles más temprano
-            print(f"🔄 [DEBUG] Detectado bucle en la tarea: {task}")
+        # Contar intentos de esta tarea específica
+        task_attempts = [(step, result) for step, result in past_steps if step == task]
+        
+        # Si la tarea ha fallado más de 2 veces, entonces sí hay un bucle problemático
+        failed_attempts = [result for _, result in task_attempts if result and "Error" in result]
+        if len(failed_attempts) >= 2:
+            print(f"🔄 [DEBUG] Detectado bucle problemático en la tarea: {task} (falló {len(failed_attempts)} veces)")
             
             # Generar una respuesta más útil usando el responder
             from .responder import generate_final_response
@@ -129,7 +134,7 @@ async def execute_step(state: PlanExecute):
             
             final_response = await generate_final_response(
                 query=original_input,
-                tool_result=f"No se pudo completar la tarea '{task}' después de múltiples intentos.",
+                tool_result=f"No se pudo completar la tarea '{task}' después de múltiples intentos fallidos.",
                 session_id=session_id,
                 past_steps=past_steps
             )
@@ -244,15 +249,40 @@ async def replan_or_finish(state: PlanExecute):
     print(f"🔄 [DEBUG] Plan string: {plan_str}")
     print(f"🔄 [DEBUG] Past steps: {past}")
     
-    # Limitar el número de pasos para evitar bucles infinitos
-    if len(past_steps) >= 5:  # Reducido de 8 a 5 para evitar bucles largos
-        print("🔄 [DEBUG] Demasiados pasos ejecutados, finalizando con responder...")
+    # Detectar bucles infinitos de manera más inteligente
+    # Contar pasos únicos ejecutados exitosamente
+    successful_steps = [step for step, result in past_steps if result and "EXITOSO" in result]
+    unique_successful_steps = len(set(successful_steps))
+    
+    # Contar pasos fallidos repetidos
+    failed_steps = [step for step, result in past_steps if result and "Error" in result]
+    repeated_failures = len([step for step in set(failed_steps) if failed_steps.count(step) >= 2])
+    
+    # Contar pasos repetidos exitosos (que podrían indicar un bucle)
+    repeated_successful_steps = []
+    for step in set(successful_steps):
+        count = successful_steps.count(step)
+        if count >= 3:  # Si un paso exitoso se repite 3+ veces, es un bucle
+            repeated_successful_steps.append(step)
+    
+    # Finalizar solo si hay demasiados pasos fallidos repetidos O si hay bucles de pasos exitosos
+    # O si ya se ejecutaron muchos pasos sin progreso real
+    if (repeated_failures >= 5 or 
+        len(repeated_successful_steps) >= 2 or 
+        (len(past_steps) >= 25 and unique_successful_steps <= 3)):
+        print(f"🔄 [DEBUG] Detectado bucle o demasiados pasos. Pasos exitosos únicos: {unique_successful_steps}, Fallos repetidos: {repeated_failures}, Total pasos: {len(past_steps)}")
         
         # Obtener el mejor resultado disponible
         tool_result = ""
         if past_steps:
-            last_result = past_steps[-1][1]
-            tool_result = last_result if last_result else "Proceso completado después de múltiples pasos."
+            # Buscar el último resultado exitoso
+            for step, result in reversed(past_steps):
+                if result and "EXITOSO" in result and len(result.strip()) > 10:
+                    tool_result = result
+                    break
+            if not tool_result:
+                last_result = past_steps[-1][1]
+                tool_result = last_result if last_result else "Proceso completado después de múltiples pasos."
         else:
             tool_result = "Proceso completado después de múltiples pasos."
         

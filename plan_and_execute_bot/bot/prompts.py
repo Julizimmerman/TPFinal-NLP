@@ -121,8 +121,24 @@ o refiriéndose a información anterior, asegúrate de que el plan aborde su int
 IMPORTANTE: 
 - Los ejecutores especializados se encargarán de usar las herramientas apropiadas automáticamente.
 - NO generes respuestas falsas sobre pasos que no se han ejecutado.
-- Si hay pasos pendientes en el plan, continúa ejecutándolos.
+- Si hay pasos pendientes en el plan, SIEMPRE continúa ejecutándolos.
 - Solo genera una respuesta final cuando TODOS los pasos necesarios se hayan completado exitosamente.
+- NO finalices prematuramente - asegúrate de que todos los pasos del plan original se hayan completado.
+
+CRITERIOS PARA CONTINUAR EJECUTANDO:
+- Si quedan pasos pendientes en el plan original
+- Si algún paso falló y necesita ser reintentado
+- Si se necesita información adicional para completar los pasos restantes
+
+CRITERIOS PARA FINALIZAR:
+- SOLO cuando TODOS los pasos del plan original se hayan completado exitosamente
+- Cuando tengas información suficiente para responder completamente al usuario
+
+IMPORTANTE - NO PREGUNTAR AL USUARIO:
+- Si el plan original incluye acciones como "enviar email", "marcar como leído", etc., EJECUTA estas acciones automáticamente
+- NO preguntes "¿Te gustaría que envíe...?" o "¿Deseas proceder...?"
+- El usuario ya especificó lo que quiere que hagas en su consulta original
+- Ejecuta todas las acciones del plan hasta completarlas
 
 Devuelve CUALQUIERA DE LAS DOS OPCIONES:
 1) "RESPUESTA: <respuesta final>" SOLO si TODOS los pasos necesarios están completados y tienes información suficiente para responder al usuario.
