@@ -250,34 +250,20 @@ async def replan_or_finish(state: PlanExecute):
     print(f"🔄 [DEBUG] Past steps: {past}")
     
     # Detectar bucles infinitos de manera más inteligente
-    # Contar pasos únicos ejecutados exitosamente
-    successful_steps = [step for step, result in past_steps if result and "EXITOSO" in result]
-    unique_successful_steps = len(set(successful_steps))
-    
     # Contar pasos fallidos repetidos
     failed_steps = [step for step, result in past_steps if result and "Error" in result]
     repeated_failures = len([step for step in set(failed_steps) if failed_steps.count(step) >= 2])
     
-    # Contar pasos repetidos exitosos (que podrían indicar un bucle)
-    repeated_successful_steps = []
-    for step in set(successful_steps):
-        count = successful_steps.count(step)
-        if count >= 3:  # Si un paso exitoso se repite 3+ veces, es un bucle
-            repeated_successful_steps.append(step)
-    
-    # Finalizar solo si hay demasiados pasos fallidos repetidos O si hay bucles de pasos exitosos
-    # O si ya se ejecutaron muchos pasos sin progreso real
-    if (repeated_failures >= 5 or 
-        len(repeated_successful_steps) >= 2 or 
-        (len(past_steps) >= 25 and unique_successful_steps <= 3)):
-        print(f"🔄 [DEBUG] Detectado bucle o demasiados pasos. Pasos exitosos únicos: {unique_successful_steps}, Fallos repetidos: {repeated_failures}, Total pasos: {len(past_steps)}")
+    # Finalizar solo si hay demasiados pasos fallidos repetidos
+    if repeated_failures >= 5:
+        print(f"🔄 [DEBUG] Detectado demasiados fallos repetidos: {repeated_failures}, Total pasos: {len(past_steps)}")
         
         # Obtener el mejor resultado disponible
         tool_result = ""
         if past_steps:
-            # Buscar el último resultado exitoso
+            # Buscar el último resultado con contenido útil
             for step, result in reversed(past_steps):
-                if result and "EXITOSO" in result and len(result.strip()) > 10:
+                if result and len(result.strip()) > 10:
                     tool_result = result
                     break
             if not tool_result:
