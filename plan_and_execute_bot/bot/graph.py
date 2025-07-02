@@ -120,10 +120,10 @@ async def execute_step(state: PlanExecute):
     # Solo finalizar si una tarea específica ha fallado múltiples veces
     for task in steps_to_execute:
         # Contar intentos de esta tarea específica
-        task_attempts = [(step, result) for step, result in past_steps if step == task]
+        task_attempts = [step_result for step_result in past_steps if step_result.step == task]
         
         # Si la tarea ha fallado más de 2 veces, entonces sí hay un bucle problemático
-        failed_attempts = [result for _, result in task_attempts if result and "Error" in result]
+        failed_attempts = [step_result.result for step_result in task_attempts if step_result.result and "Error" in step_result.result]
         if len(failed_attempts) >= 2:
             print(f"🔄 [DEBUG] Detectado bucle problemático en la tarea: {task} (falló {len(failed_attempts)} veces)")
             
