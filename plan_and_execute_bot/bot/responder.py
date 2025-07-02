@@ -1,9 +1,10 @@
 """Módulo para generar respuestas finales pulidas usando LLM."""
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Union
 from langchain.prompts import ChatPromptTemplate
 from langchain.prompts import PromptTemplate
 from .config import LLM_PLANNER  # Reutilizamos el LLM del planner
 from .memory import memory
+from .schemas import StepResult
 from datetime import datetime, timezone, timedelta
 BA = timezone(timedelta(hours=-3))      # tu huso horario
 TODAY = datetime.now(BA).strftime("%-d de %B de %Y")
@@ -30,6 +31,12 @@ Tu tarea es generar una respuesta que:
 5. Si es información sobre clima, incluya detalles relevantes como temperatura, condiciones, etc.
 6. Si no se pudo obtener la información, explica claramente por qué
 
+**REGLAS IMPORTANTES:**
+- Si el resultado contiene palabras como "eliminado exitosamente", "creado exitosamente", "actualizado exitosamente", "exitoso", "completado correctamente", entonces la tarea SE COMPLETÓ EXITOSAMENTE
+- Si la tarea se completó exitosamente, NO menciones errores o fallos previos
+- Si la tarea se completó exitosamente, reporta SOLO el éxito
+- Si hay múltiples resultados, prioriza el resultado exitoso sobre los errores
+
 Genera SOLO la respuesta final, sin explicaciones adicionales sobre el proceso.
 """
 
@@ -43,7 +50,7 @@ async def generate_final_response(
     query: str,
     tool_result: str,
     session_id: Optional[str] = None,
-    past_steps: Optional[List[Tuple[str, str]]] = None
+    past_steps: Optional[Union[List[Tuple[str, str]], List[StepResult]]] = None
 ) -> str:
     """
     Genera una respuesta final pulida usando LLM.
@@ -52,7 +59,7 @@ async def generate_final_response(
         query: La consulta original del usuario
         tool_result: El resultado obtenido de las herramientas
         session_id: ID de sesión para obtener contexto de conversación
-        past_steps: Lista de pasos ejecutados (opcional)
+        past_steps: Lista de pasos ejecutados (opcional) - puede ser tuplas o StepResult
     
     Returns:
         str: Respuesta final generada por el LLM
@@ -66,15 +73,72 @@ async def generate_final_response(
     if session_id:
         conversation_context = memory.get_context_for_planning(session_id, max_messages=5)
     
+    # Procesar el tool_result para detectar éxito y limpiar mensajes de error
+    processed_tool_result = tool_result
+    
+    # Si hay éxito en el resultado, extraer solo la parte exitosa
+    if any(success_phrase in tool_result.lower() for success_phrase in [
+        "eliminado exitosamente", "creado exitosamente", "actualizado exitosamente",
+        "evento eliminado", "evento creado", "evento actualizado",
+        "exitoso", "completado correctamente"
+    ]):
+        # Buscar la línea que contiene el éxito
+        lines = tool_result.split('\n')
+        success_lines = []
+        
+        for line in lines:
+            if any(success_phrase in line.lower() for success_phrase in [
+                "eliminado exitosamente", "creado exitosamente", "actualizado exitosamente",
+                "evento eliminado", "evento creado", "evento actualizado",
+                "exitoso", "completado correctamente"
+            ]):
+                success_lines.append(line.strip())
+        
+        if success_lines:
+            # Si encontramos líneas de éxito, usar solo esas
+            processed_tool_result = "\n".join(success_lines)
+            print(f"🔄 [DEBUG] Procesado tool_result para mostrar solo éxito: {processed_tool_result}")
+    
     # Si tenemos past_steps, usar el resultado más relevante
     if past_steps:
         # Unir todos los resultados relevantes en un solo string
         combined_results = []
-        for step, result in past_steps:
-            if result and len(result.strip()) > 10:
-                combined_results.append(result.strip())
+        
+        # Manejar tanto el formato antiguo (tuplas) como el nuevo (StepResult)
+        for step_data in past_steps:
+            if isinstance(step_data, StepResult):
+                # Nuevo formato: StepResult
+                if step_data.success and step_data.result and len(step_data.result.strip()) > 10:
+                    combined_results.append(step_data.result.strip())
+            else:
+                # Formato antiguo: tupla (step, result)
+                step, result = step_data
+                if result and len(result.strip()) > 10:
+                    combined_results.append(result.strip())
+        
         if combined_results:
-            tool_result = "\n".join(combined_results)
+            # Procesar también los resultados combinados
+            combined_tool_result = "\n".join(combined_results)
+            
+            # Si hay éxito en los resultados combinados, usar solo esa parte
+            if any(success_phrase in combined_tool_result.lower() for success_phrase in [
+                "eliminado exitosamente", "creado exitosamente", "actualizado exitosamente",
+                "evento eliminado", "evento creado", "evento actualizado",
+                "exitoso", "completado correctamente"
+            ]):
+                lines = combined_tool_result.split('\n')
+                success_lines = []
+                
+                for line in lines:
+                    if any(success_phrase in line.lower() for success_phrase in [
+                        "eliminado exitosamente", "creado exitosamente", "actualizado exitosamente",
+                        "evento eliminado", "evento creado", "evento actualizado",
+                        "exitoso", "completado correctamente"
+                    ]):
+                        success_lines.append(line.strip())
+                
+                if success_lines:
+                    processed_tool_result = "\n".join(success_lines)
     
     print(f"🔄 [DEBUG] Contexto de conversación: {conversation_context}")
     
@@ -85,7 +149,7 @@ async def generate_final_response(
         # Generar respuesta
         response = await prompt_chain.ainvoke({
             "query": query,
-            "tool_result": tool_result,
+            "tool_result": processed_tool_result,
             "conversation_context": conversation_context
         })
         
@@ -100,20 +164,20 @@ async def generate_final_response(
         
     except Exception as e:
         print(f"🔄 [DEBUG] Error generando respuesta final: {e}")
-        # Fallback: usar el tool_result directamente
-        fallback_response = tool_result if tool_result else "No se pudo obtener la información solicitada."
+        # Fallback: usar el tool_result procesado directamente
+        fallback_response = processed_tool_result if processed_tool_result else "No se pudo obtener la información solicitada."
         
         if session_id:
             memory.add_message(session_id, "assistant", fallback_response)
         
         return fallback_response
 
-def format_past_steps_summary(past_steps: List[Tuple[str, str]]) -> str:
+def format_past_steps_summary(past_steps: Union[List[Tuple[str, str]], List[StepResult]]) -> str:
     """
     Formatea los pasos ejecutados en un resumen legible.
     
     Args:
-        past_steps: Lista de tuplas (tarea, resultado)
+        past_steps: Lista de tuplas (tarea, resultado) o StepResult
     
     Returns:
         str: Resumen formateado de los pasos
@@ -122,8 +186,21 @@ def format_past_steps_summary(past_steps: List[Tuple[str, str]]) -> str:
         return "No se ejecutaron pasos."
     
     summary_parts = []
-    for i, (task, result) in enumerate(past_steps, 1):
-        summary_parts.append(f"Paso {i}: {task}")
+    for i, step_data in enumerate(past_steps, 1):
+        if isinstance(step_data, StepResult):
+            # Nuevo formato: StepResult
+            task = step_data.step
+            result = step_data.result
+            executor = step_data.executor
+            success = step_data.success
+            
+            status = "✅" if success else "❌"
+            summary_parts.append(f"Paso {i}: {task} (ejecutor: {executor}) {status}")
+        else:
+            # Formato antiguo: tupla (step, result)
+            task, result = step_data
+            summary_parts.append(f"Paso {i}: {task}")
+        
         if result:
             # Truncar resultados muy largos
             truncated_result = result[:200] + "..." if len(result) > 200 else result

@@ -40,7 +40,6 @@ async def execute_specialized_task(task: str, session_id: str = None) -> str:
             executor_name = "weather_executor"
         
         executor_func = EXECUTOR_MAP[executor_name]
-        print(f"🔄 [SPECIALIZED_EXECUTOR] Usando ejecutor: {executor_name}")
         
         # 3. Ejecutar la tarea con el ejecutor especializado
         print(f"🔄 [SPECIALIZED_EXECUTOR] Invocando {executor_name}...")

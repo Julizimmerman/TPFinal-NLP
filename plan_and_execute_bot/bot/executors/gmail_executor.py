@@ -107,12 +107,17 @@ INSTRUCCIONES DE EJECUCIÓN:
 - Verifica que los emails estén bien formateados antes de enviar
 
 INSTRUCCIONES ESPECÍFICAS PARA RESUMENES:
-- Cuando crees un resumen, SIEMPRE incluye información específica de cada mensaje
+- Cuando crees un resumen consolidado, SIEMPRE incluye información específica de cada mensaje
 - Usa get_message para obtener detalles completos de cada mensaje antes de crear el resumen
-- Incluye en el resumen: remitente, asunto, fecha y resumen de la respuesta enviada
+- Incluye en el resumen: remitente, asunto, fecha y resumen del contenido del mensaje
 - NO uses placeholders genéricos como "[Detalles de la respuesta X]"
 - El resumen debe ser informativo y útil para el destinatario
-- NO hagas listas de mensajes, HAZ un resumen de los mensajes.
+- NO hagas listas de mensajes, HAZ un resumen narrativo de los mensajes
+- Para crear un resumen correcto:
+  1. Obtén los message_ids de los mensajes
+  2. Usa get_message para cada message_id y extrae la información real
+  3. Incluye en el resumen: "Remitente: [nombre real]", "Asunto: [asunto real]", "Fecha: [fecha real]", "Resumen: [contenido real del mensaje]"
+  4. NO inventes información ni uses templates genéricos
 
 IMPORTANTE - EJECUCIÓN AUTOMÁTICA:
 - Si la tarea incluye "enviar", "mandar", "responder", "marcar como leído", etc., EJECUTA estas acciones automáticamente

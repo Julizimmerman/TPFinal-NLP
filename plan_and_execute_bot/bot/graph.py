@@ -1,7 +1,7 @@
 """LangGraph wrapper that glues planner, executor and re-planner."""
 from typing import List
 from langgraph.graph import StateGraph, END
-from .schemas import PlanExecute, Response, Plan, Act
+from .schemas import PlanExecute, Response, Plan, Act, StepResult
 from .planner import make_plan
 from .executor import agent_executor
 from .executors import execute_specialized_task, execute_multiple_tasks
@@ -176,10 +176,22 @@ async def execute_step(state: PlanExecute):
         
         print(f"🔄 [DEBUG] Respuesta del ejecutor especializado: {result}")
         
-        # Agregar todos los pasos completados a past_steps
+        # Agregar todos los pasos completados a past_steps usando StepResult
         new_past_steps = past_steps[:]
         for step in steps_to_execute:
-            new_past_steps.append((step, result))
+            # Determinar si el paso fue exitoso
+            success = not (result and "Error" in result)
+            
+            # Determinar qué ejecutor se usó basándose en la tarea
+            executor_used = determine_executor_from_task(step)
+            
+            step_result = StepResult(
+                step=step,
+                result=result,
+                executor=executor_used,
+                success=success
+            )
+            new_past_steps.append(step_result)
             tool_results.append(result)  # Acumula el resultado de la tool
         
         print(f"🔄 [DEBUG] tool_results acumulados: {tool_results}")
@@ -226,9 +238,9 @@ async def replan_or_finish(state: PlanExecute):
         tool_result = ""
         if past_steps:
             # Buscar el resultado más relevante (último con contenido útil)
-            for step, result in reversed(past_steps):
-                if result and len(result.strip()) > 10:
-                    tool_result = result
+            for step_result in reversed(past_steps):
+                if step_result.success and len(step_result.result.strip()) > 10:
+                    tool_result = step_result.result
                     break
         
         if not tool_result:
@@ -245,13 +257,13 @@ async def replan_or_finish(state: PlanExecute):
         return {"response": final_response}
     
     plan_str = "\n".join(f"{i+1}. {s}" for i, s in enumerate(plan))
-    past = "\n".join(f"{t} --> {r}" for t, r in past_steps)
+    past = "\n".join(f"{step_result.step} --> {step_result.result}" for step_result in past_steps)
     print(f"🔄 [DEBUG] Plan string: {plan_str}")
     print(f"🔄 [DEBUG] Past steps: {past}")
     
     # Detectar bucles infinitos de manera más inteligente
     # Contar pasos fallidos repetidos
-    failed_steps = [step for step, result in past_steps if result and "Error" in result]
+    failed_steps = [step_result.step for step_result in past_steps if not step_result.success]
     repeated_failures = len([step for step in set(failed_steps) if failed_steps.count(step) >= 2])
     
     # Finalizar solo si hay demasiados pasos fallidos repetidos
@@ -262,12 +274,12 @@ async def replan_or_finish(state: PlanExecute):
         tool_result = ""
         if past_steps:
             # Buscar el último resultado con contenido útil
-            for step, result in reversed(past_steps):
-                if result and len(result.strip()) > 10:
-                    tool_result = result
+            for step_result in reversed(past_steps):
+                if step_result.success and len(step_result.result.strip()) > 10:
+                    tool_result = step_result.result
                     break
             if not tool_result:
-                last_result = past_steps[-1][1]
+                last_result = past_steps[-1].result
                 tool_result = last_result if last_result else "Proceso completado después de múltiples pasos."
         else:
             tool_result = "Proceso completado después de múltiples pasos."
@@ -289,6 +301,20 @@ async def replan_or_finish(state: PlanExecute):
         if context != "Esta es una nueva conversación.":
             input_with_context = f"{context}\n\nConsulta actual: {original_input}"
     
+    # Crear un resumen inteligente de pasos completados para el replanner
+    completed_steps_summary = []
+    failed_steps_summary = []
+    
+    for step_result in past_steps:
+        if step_result.success:
+            completed_steps_summary.append(f"✅ {step_result.step} (completado con {step_result.executor})")
+        else:
+            failed_steps_summary.append(f"❌ {step_result.step} (falló con {step_result.executor}: {step_result.result})")
+    
+    # Preparar información para el replanner
+    completed_info = "\n".join(completed_steps_summary) if completed_steps_summary else "Ningún paso completado"
+    failed_info = "\n".join(failed_steps_summary) if failed_steps_summary else "Ningún paso fallido"
+    
     prompt_chain = REPLANNER_PROMPT | LLM_PLANNER
     print("🔄 [DEBUG] Invocando replanner...")
     
@@ -297,7 +323,7 @@ async def replan_or_finish(state: PlanExecute):
             {
                 "input": input_with_context,
                 "plan": plan_str or "None",
-                "past_steps": past or "None",
+                "past_steps": f"PASOS COMPLETADOS:\n{completed_info}\n\nPASOS FALLIDOS:\n{failed_info}",
             }
         )).content
         print(f"🔄 [DEBUG] Respuesta del replanner: {reply}")
@@ -319,12 +345,64 @@ async def replan_or_finish(state: PlanExecute):
             
         elif reply.startswith("PLAN:"):
             steps_text = reply[len("PLAN:"):].strip()
-            steps = [line.split(".", 1)[1].strip() for line in steps_text.splitlines()
+            new_steps = [line.split(".", 1)[1].strip() for line in steps_text.splitlines()
                      if "." in line and line.split(".", 1)[1].strip()]
-            if steps:
-                result = {"plan": steps}
-                print(f"🔄 [DEBUG] Nuevo plan: {result}")
-                return result
+            
+            if new_steps:
+                # Filtrar pasos ya completados exitosamente
+                completed_steps = [step_result.step for step_result in past_steps 
+                                 if step_result.success]
+                
+                # Filtrar pasos que ya están en el plan actual
+                current_plan_steps = set(plan)
+                
+                # Solo agregar pasos nuevos que no se hayan completado ni estén en el plan actual
+                filtered_steps = []
+                for step in new_steps:
+                    # Verificar si el paso ya se completó exitosamente
+                    step_completed = any(completed_step.lower() in step.lower() or 
+                                       step.lower() in completed_step.lower() 
+                                       for completed_step in completed_steps)
+                    
+                    # Verificar si el paso ya está en el plan actual
+                    step_in_current_plan = any(current_step.lower() in step.lower() or 
+                                             step.lower() in current_step.lower() 
+                                             for current_step in current_plan_steps)
+                    
+                    if not step_completed and not step_in_current_plan:
+                        filtered_steps.append(step)
+                        print(f"🔄 [DEBUG] Agregando paso nuevo: {step}")
+                    else:
+                        print(f"🔄 [DEBUG] Omitiendo paso duplicado/completado: {step}")
+                
+                # Combinar el plan actual con los nuevos pasos filtrados
+                final_plan = plan + filtered_steps
+                
+                if final_plan:
+                    result = {"plan": final_plan}
+                    print(f"🔄 [DEBUG] Plan actualizado: {result}")
+                    return result
+                else:
+                    print("🔄 [DEBUG] No hay pasos nuevos para agregar, finalizando...")
+                    # Generar respuesta final ya que no hay más pasos que ejecutar
+                    tool_result = ""
+                    if past_steps:
+                        for step_result in reversed(past_steps):
+                            if step_result.success and len(step_result.result.strip()) > 10:
+                                tool_result = step_result.result
+                                break
+                    
+                    if not tool_result:
+                        tool_result = "Todos los pasos necesarios han sido completados."
+                    
+                    final_response = await generate_final_response(
+                        query=original_input,
+                        tool_result=tool_result,
+                        session_id=session_id,
+                        past_steps=past_steps
+                    )
+                    print(f"🔄 [DEBUG] [RESPONSE] Respuesta final generada: {final_response}")
+                    return {"response": final_response}
             else:
                 print("🔄 [DEBUG] Plan vacío, finalizando con responder...")
                 final_response = await generate_final_response(
@@ -367,6 +445,31 @@ def should_finish(state: PlanExecute):
     print(f"🔄 [DEBUG] Estado tiene respuesta: {has_response}")
     print(f"🔄 [DEBUG] Estado tiene plan: {has_plan}")
     return decision
+
+def determine_executor_from_task(task: str) -> str:
+    """
+    Determina qué ejecutor se usó basándose en el contenido de la tarea.
+    
+    Args:
+        task: La tarea ejecutada
+        
+    Returns:
+        str: Nombre del ejecutor usado
+    """
+    task_lower = task.lower()
+    
+    if any(word in task_lower for word in ["clima", "tiempo", "temperatura", "lluvia", "sol", "aire", "pronóstico"]):
+        return "weather_executor"
+    elif any(word in task_lower for word in ["tarea", "task", "completar", "eliminar tarea", "crear tarea"]):
+        return "tasks_executor"
+    elif any(word in task_lower for word in ["archivo", "drive", "subir", "descargar", "buscar archivo", "mover archivo"]):
+        return "drive_executor"
+    elif any(word in task_lower for word in ["email", "correo", "gmail", "enviar", "mensaje", "responder"]):
+        return "gmail_executor"
+    elif any(word in task_lower for word in ["evento", "calendario", "reunión", "cita", "agendar"]):
+        return "calendar_executor"
+    else:
+        return "unknown_executor"
 
 # ---------- Graph builder ---------- #
 

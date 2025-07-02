@@ -13,7 +13,11 @@ from google.auth.transport.requests import Request
 from langchain.tools import tool
 
 # --- CONFIGURACIÓN OAuth ---
-SCOPES = ['https://www.googleapis.com/auth/gmail.modify']
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.modify',  # Leer, modificar y gestionar mensajes
+    'https://www.googleapis.com/auth/gmail.send',    # Enviar mensajes
+    'https://www.googleapis.com/auth/gmail.labels'   # Gestionar etiquetas personalizadas
+]
 
 # Configurar rutas relativas al directorio raíz del proyecto
 _CURRENT_DIR = Path(__file__).parent.parent.parent.parent  # Subir 4 niveles desde bot/tools/gmail.py
@@ -23,18 +27,25 @@ TOKEN_FILE = str(_CURRENT_DIR / 'gmail_token.json')
 
 def get_gmail_service():
     """Inicializa y devuelve el servicio de Gmail."""
-    creds = None
-    if Path(TOKEN_FILE).exists():
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDS_FILE, SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open(TOKEN_FILE, 'w', encoding='utf-8') as token:
-            token.write(creds.to_json())
-    return build('gmail', 'v1', credentials=creds)
+    try:
+        creds = None
+        if Path(TOKEN_FILE).exists():
+            creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                # Verificar si existe el archivo de credenciales
+                if not Path(CREDS_FILE).exists():
+                    raise FileNotFoundError(f"No se encontró el archivo {CREDS_FILE}. Por favor, configura las credenciales de Gmail.")
+                
+                flow = InstalledAppFlow.from_client_secrets_file(CREDS_FILE, SCOPES)
+                creds = flow.run_local_server(port=0)
+            with open(TOKEN_FILE, 'w', encoding='utf-8') as token:
+                token.write(creds.to_json())
+        return build('gmail', 'v1', credentials=creds)
+    except Exception as e:
+        raise Exception(f"Error al configurar Gmail: {str(e)}")
 
 
 @tool
@@ -99,6 +110,8 @@ def list_messages(query: str = None, label_ids: str = None, max_results: int = 1
                 message_list.append(f"❌ Error al obtener detalles del mensaje {msg['id']}: {str(e)}\n")
         
         return "\n".join(message_list)
+    except FileNotFoundError as e:
+        return f"❌ Gmail no está configurado: {str(e)}"
     except Exception as e:
         return f"❌ Error al listar mensajes: {str(e)}"
 
@@ -149,6 +162,8 @@ def get_message(message_id: str, format: str = 'full') -> str:
         ]
         
         return "\n".join(result)
+    except FileNotFoundError as e:
+        return f"❌ Gmail no está configurado: {str(e)}"
     except Exception as e:
         return f"❌ Error al recuperar el mensaje: {str(e)}"
 
@@ -171,7 +186,7 @@ def send_message(to: str, subject: str, body_html: str, cc: str = None, bcc: str
         service = get_gmail_service()
         
         # Crear mensaje MIME
-        message = MIMEMultipart('alternative')
+        message = MIMEMultipart('mixed')
         message['To'] = to
         message['Subject'] = subject
         
@@ -180,9 +195,22 @@ def send_message(to: str, subject: str, body_html: str, cc: str = None, bcc: str
         if bcc:
             message['Bcc'] = bcc
         
+        # Crear parte alternativa para HTML y texto plano
+        msg_alternative = MIMEMultipart('alternative')
+        message.attach(msg_alternative)
+        
+        # Convertir HTML a texto plano simple
+        import re
+        text_content = re.sub(r'<[^>]+>', '', body_html)
+        text_content = re.sub(r'\s+', ' ', text_content).strip()
+        
+        # Adjuntar contenido de texto plano
+        text_part = MIMEText(text_content, 'plain', 'utf-8')
+        msg_alternative.attach(text_part)
+        
         # Adjuntar contenido HTML
         html_part = MIMEText(body_html, 'html', 'utf-8')
-        message.attach(html_part)
+        msg_alternative.attach(html_part)
         
         # Codificar mensaje
         raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode('utf-8')
@@ -194,6 +222,8 @@ def send_message(to: str, subject: str, body_html: str, cc: str = None, bcc: str
         ).execute()
         
         return f"✅ Mensaje enviado exitosamente a {to} (ID: {send_result['id']})"
+    except FileNotFoundError as e:
+        return f"❌ Gmail no está configurado: {str(e)}"
     except Exception as e:
         return f"❌ Error al enviar el mensaje: {str(e)}"
 
@@ -263,6 +293,8 @@ def reply_message(thread_id: str, body_html: str, quote_original: bool = True) -
         ).execute()
         
         return f"✅ Respuesta enviada exitosamente en el hilo {thread_id} (ID: {send_result['id']})"
+    except FileNotFoundError as e:
+        return f"❌ Gmail no está configurado: {str(e)}"
     except Exception as e:
         return f"❌ Error al enviar la respuesta: {str(e)}"
 
@@ -291,6 +323,8 @@ def delete_message(message_id: str, permanent: bool = False) -> str:
             action = "movido a la papelera"
         
         return f"✅ Mensaje {action} exitosamente (ID: {message_id})"
+    except FileNotFoundError as e:
+        return f"❌ Gmail no está configurado: {str(e)}"
     except Exception as e:
         return f"❌ Error al eliminar el mensaje: {str(e)}"
 
@@ -363,6 +397,8 @@ def modify_labels(message_id: str, add_labels: str = None, remove_labels: str = 
             actions.append(f"quitadas: {', '.join(remove_labels_list)}")
         
         return f"✅ Etiquetas {' y '.join(actions)} exitosamente en el mensaje {message_id}"
+    except FileNotFoundError as e:
+        return f"❌ Gmail no está configurado: {str(e)}"
     except Exception as e:
         print(f"[DEBUG][modify_labels] Error: {e}")
         return f"❌ Error al modificar las etiquetas: {str(e)}"

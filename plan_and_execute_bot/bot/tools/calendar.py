@@ -285,3 +285,52 @@ def delete_event(calendar_id: str, event_id: str) -> str:
         return f"❌ Google Calendar no está configurado: {str(e)}"
     except Exception as e:
         return f"❌ Error al eliminar el evento: {str(e)}"
+
+
+@tool
+def search_events(calendar_id: str, query: str, days_back: int = 30, days_forward: int = 365) -> str:
+    """Busca eventos por término de búsqueda en un rango amplio de fechas.
+    
+    Args:
+        calendar_id: ID del calendario
+        query: Término de búsqueda (nombre del evento, asistentes, etc.)
+        days_back: Días hacia atrás desde hoy (por defecto 30)
+        days_forward: Días hacia adelante desde hoy (por defecto 365)
+        
+    Returns:
+        Lista de eventos que coinciden con la búsqueda
+    """
+    try:
+        from datetime import datetime, timedelta, timezone
+        
+        # Calcular fechas de búsqueda
+        now = datetime.now(timezone(timedelta(hours=-3)))  # Argentina timezone
+        time_min = (now - timedelta(days=days_back)).isoformat() + 'Z'
+        time_max = (now + timedelta(days=days_forward)).isoformat() + 'Z'
+        
+        service = get_calendar_service()
+        events_result = service.events().list(
+            calendarId=calendar_id,
+            timeMin=time_min,
+            timeMax=time_max,
+            q=query,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+        
+        events = events_result.get('items', [])
+        
+        if not events:
+            return f"No se encontraron eventos con '{query}' en el rango de búsqueda (desde hace {days_back} días hasta {days_forward} días en el futuro)."
+        
+        result = f"Eventos encontrados con '{query}' ({len(events)}):\n"
+        for event in events:
+            start = event['start'].get('dateTime', event['start'].get('date'))
+            summary = event.get('summary', 'Sin título')
+            result += f"- {summary} ({start}) [ID: {event['id']}]\n"
+        
+        return result.strip()
+    except FileNotFoundError as e:
+        return f"❌ Google Calendar no está configurado: {str(e)}"
+    except Exception as e:
+        return f"❌ Error al buscar eventos: {str(e)}"

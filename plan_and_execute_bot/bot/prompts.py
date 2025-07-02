@@ -109,30 +109,28 @@ El sistema utiliza ejecutores especializados que se seleccionan automáticamente
 
 Solicitud del usuario: {{input}}
 
-Plan original:
+Plan actual (pasos pendientes):
 {{plan}}
 
-Pasos ya completados:
+Pasos ya ejecutados:
 {{past_steps}}
 
-Considera el contexto de la conversación al decidir los próximos pasos. Si el usuario está haciendo preguntas de seguimiento
-o refiriéndose a información anterior, asegúrate de que el plan aborde su intención real.
+INSTRUCCIONES CRÍTICAS:
+1. **NO REPITAS PASOS COMPLETADOS**: Si un paso ya se completó exitosamente (✅), NO lo incluyas en el nuevo plan
+2. **SOLO AGREGA PASOS FALTANTES**: Solo agrega pasos que sean necesarios y que NO se hayan completado
+3. **CONSIDERA EL CONTEXTO**: Si el usuario hace preguntas de seguimiento, asegúrate de que el plan aborde su intención real
+4. **MANTÉN LA EFICIENCIA**: No agregues pasos innecesarios o redundantes
 
-IMPORTANTE: 
-- Los ejecutores especializados se encargarán de usar las herramientas apropiadas automáticamente.
-- NO generes respuestas falsas sobre pasos que no se han ejecutado.
-- Si hay pasos pendientes en el plan, SIEMPRE continúa ejecutándolos.
-- Solo genera una respuesta final cuando TODOS los pasos necesarios se hayan completado exitosamente.
-- NO finalices prematuramente - asegúrate de que todos los pasos del plan original se hayan completado.
-
-CRITERIOS PARA CONTINUAR EJECUTANDO:
-- Si quedan pasos pendientes en el plan original
-- Si algún paso falló y necesita ser reintentado
-- Si se necesita información adicional para completar los pasos restantes
+CRITERIOS PARA AGREGAR PASOS:
+- El paso es necesario para completar la tarea del usuario
+- El paso NO se ha completado exitosamente (no aparece con ✅)
+- El paso NO está ya en el plan actual
+- El paso es lógicamente el siguiente en la secuencia
 
 CRITERIOS PARA FINALIZAR:
-- SOLO cuando TODOS los pasos del plan original se hayan completado exitosamente
-- Cuando tengas información suficiente para responder completamente al usuario
+- TODOS los pasos necesarios se han completado exitosamente
+- Tienes información suficiente para responder completamente al usuario
+- No hay pasos faltantes lógicos
 
 IMPORTANTE - NO PREGUNTAR AL USUARIO:
 - Si el plan original incluye acciones como "enviar email", "marcar como leído", etc., EJECUTA estas acciones automáticamente
@@ -142,33 +140,27 @@ IMPORTANTE - NO PREGUNTAR AL USUARIO:
 
 Devuelve CUALQUIERA DE LAS DOS OPCIONES:
 1) "RESPUESTA: <respuesta final>" SOLO si TODOS los pasos necesarios están completados y tienes información suficiente para responder al usuario.
-2) "PLAN: <nuevo plan numerado>" si quedan pasos por ejecutar o necesitas más información.
+2) "PLAN: <nuevos pasos numerados>" SOLO si hay pasos faltantes que NO se han completado.
 
-NO repitas pasos completados.
+EJEMPLOS:
 
-Ejemplo:
-- Plan original:
-  1. Crear evento "Reunión con Carlos García" mañana a las 10 AM.
-  2. Enviar email de confirmación a Carlos García.
-- Usuario dice: "Finalmente, que la reunión sea con Ana Fernández."  
-  → Salida:
-  PLAN:
-  1. Buscar evento "Reunión con Carlos García" mañana.  
-  2. Actualizar evento para cambiar título a "Reunión con Ana Fernández".  
-  3. Enviar email de notificación a Ana Fernández sobre la reasignación.  
-  4. Confirmar la reasignación al usuario.  
+Ejemplo 1 - Solo agregar pasos faltantes:
+- Plan actual: ["Enviar email de confirmación"]
+- Pasos completados: ["✅ Crear tarea 'Reunión' (completado)"]
+- Usuario: "También agenda la reunión en el calendario"
+- Respuesta: "PLAN: 1. Crear evento en calendario para la reunión"
 
-Ejemplo:
-- Plan original:
-  1. Crear evento "Reunión con Carlos García" mañana a las 10 AM.
-  2. Enviar email de confirmación a Carlos García.
-- Usuario dice: "Finalmente, que la reunión sea con juanita@gmail.com."  
-  → Salida:
-  PLAN:
-  1. Buscar evento "Reunión con Carlos García" mañana.  
-  2. Actualizar evento para cambiar título a "Reunión con Juanita".  
-  3. Enviar email de notificación a juanita@gmail.com sobre la reasignación.  
-  4. Confirmar la reasignación al usuario. 
+Ejemplo 2 - No repetir pasos completados:
+- Plan actual: ["Enviar email"]
+- Pasos completados: ["✅ Crear tarea 'Reunión' (completado)", "✅ Crear evento en calendario (completado)"]
+- Usuario: "¿Ya creaste la tarea?"
+- Respuesta: "RESPUESTA: Sí, ya creé la tarea 'Reunión' y también agendé el evento en el calendario. Solo falta enviar el email de confirmación."
+
+Ejemplo 3 - Finalizar cuando todo está completo:
+- Plan actual: []
+- Pasos completados: ["✅ Crear tarea 'Reunión' (completado)", "✅ Crear evento en calendario (completado)", "✅ Enviar email de confirmación (completado)"]
+- Usuario: "¿Todo listo?"
+- Respuesta: "RESPUESTA: Sí, todo está listo. He creado la tarea 'Reunión', agendado el evento en el calendario y enviado el email de confirmación."
 """
 )
 

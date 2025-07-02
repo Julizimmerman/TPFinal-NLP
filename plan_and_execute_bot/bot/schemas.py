@@ -12,11 +12,19 @@ class ConversationMessage(BaseModel):
     timestamp: str = Field(description="Timestamp del mensaje")
 
 
+class StepResult(BaseModel):
+    """Resultado de un paso ejecutado con información del ejecutor."""
+    step: str = Field(description="Descripción del paso ejecutado")
+    result: str = Field(description="Resultado de la ejecución")
+    executor: str = Field(description="Ejecutor especializado usado")
+    success: bool = Field(description="Si el paso se completó exitosamente")
+
+
 class PlanExecute(TypedDict, total=False):
     # Core fields
     input: Optional[str]
     plan: List[str]
-    past_steps: Annotated[List[Tuple], operator.add]
+    past_steps: Annotated[List[StepResult], operator.add]
     response: Optional[str]
     
     # Alternative input formats
