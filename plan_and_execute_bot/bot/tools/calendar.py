@@ -155,7 +155,7 @@ def get_event(calendar_id: str, event_id: str) -> str:
 
 @tool
 def create_event(calendar_id: str, summary: str, start: str, end: str, 
-                attendees: List[str] = None, location: str = None, description: str = None) -> str:
+                attendees: str = None, location: str = None, description: str = None) -> str:
     """Crea un nuevo evento.
     
     Args:
@@ -163,7 +163,7 @@ def create_event(calendar_id: str, summary: str, start: str, end: str,
         summary: Título del evento
         start: Fecha/hora de inicio en formato ISO
         end: Fecha/hora de fin en formato ISO
-        attendees: Lista de emails de asistentes (opcional)
+        attendees: Emails de asistentes separados por comas (opcional)
         location: Ubicación del evento (opcional)
         description: Descripción del evento (opcional)
         
@@ -186,7 +186,9 @@ def create_event(calendar_id: str, summary: str, start: str, end: str,
             event_body['location'] = location
         
         if attendees:
-            event_body['attendees'] = [{'email': email} for email in attendees]
+            # Convertir string a lista
+            attendees_list = [email.strip() for email in attendees.split(',')]
+            event_body['attendees'] = [{'email': email} for email in attendees_list]
         
         event = service.events().insert(calendarId=calendar_id, body=event_body).execute()
         
@@ -198,13 +200,20 @@ def create_event(calendar_id: str, summary: str, start: str, end: str,
 
 
 @tool
-def update_event(calendar_id: str, event_id: str, patch: Dict[str, Any]) -> str:
+def update_event(calendar_id: str, event_id: str, summary: str = None, start: str = None, 
+                end: str = None, description: str = None, location: str = None, 
+                attendees: str = None) -> str:
     """Modifica campos de un evento existente.
     
     Args:
         calendar_id: ID del calendario
         event_id: ID del evento
-        patch: Diccionario con los campos a actualizar
+        summary: Nuevo título del evento (opcional)
+        start: Nueva fecha/hora de inicio en formato ISO (opcional)
+        end: Nueva fecha/hora de fin en formato ISO (opcional)
+        description: Nueva descripción del evento (opcional)
+        location: Nueva ubicación del evento (opcional)
+        attendees: Nueva lista de emails de asistentes separados por comas (opcional)
         
     Returns:
         Confirmación de la actualización del evento
@@ -215,16 +224,26 @@ def update_event(calendar_id: str, event_id: str, patch: Dict[str, Any]) -> str:
         # Obtener el evento actual
         event = service.events().get(calendarId=calendar_id, eventId=event_id).execute()
         
-        # Aplicar los cambios del patch
-        for key, value in patch.items():
-            if key in ['start', 'end'] and isinstance(value, str):
-                # Manejar fechas especialmente
-                event[key] = {'dateTime': value, 'timeZone': 'America/Argentina/Buenos_Aires'}
-            elif key == 'attendees' and isinstance(value, list):
-                # Manejar asistentes
-                event[key] = [{'email': email} for email in value]
-            else:
-                event[key] = value
+        # Aplicar los cambios solo si se proporcionan
+        if summary is not None:
+            event['summary'] = summary
+        
+        if start is not None:
+            event['start'] = {'dateTime': start, 'timeZone': 'America/Argentina/Buenos_Aires'}
+        
+        if end is not None:
+            event['end'] = {'dateTime': end, 'timeZone': 'America/Argentina/Buenos_Aires'}
+        
+        if description is not None:
+            event['description'] = description
+        
+        if location is not None:
+            event['location'] = location
+        
+        if attendees is not None:
+            # Convertir string a lista
+            attendees_list = [email.strip() for email in attendees.split(',')]
+            event['attendees'] = [{'email': email} for email in attendees_list]
         
         # Actualizar el evento
         updated_event = service.events().update(

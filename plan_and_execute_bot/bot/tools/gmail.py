@@ -38,12 +38,12 @@ def get_gmail_service():
 
 
 @tool
-def list_messages(query: str = None, label_ids: List[str] = None, max_results: int = 10) -> str:
+def list_messages(query: str = None, label_ids: str = None, max_results: int = 10) -> str:
     """Lista hilos o correos según query (label, fecha, etc.).
     
     Args:
         query: Consulta de búsqueda (opcional, ej: "from:ejemplo@gmail.com", "subject:importante")
-        label_ids: IDs de etiquetas para filtrar (opcional)
+        label_ids: IDs de etiquetas para filtrar separados por comas (opcional)
         max_results: Número máximo de resultados (opcional, por defecto 10)
         
     Returns:
@@ -61,7 +61,9 @@ def list_messages(query: str = None, label_ids: List[str] = None, max_results: i
         if query:
             search_params['q'] = query
         if label_ids:
-            search_params['labelIds'] = label_ids
+            # Convertir string a lista
+            label_ids_list = [label.strip() for label in label_ids.split(',')]
+            search_params['labelIds'] = label_ids_list
         
         # Obtener lista de mensajes
         results = service.users().messages().list(**search_params).execute()
@@ -152,15 +154,15 @@ def get_message(message_id: str, format: str = 'full') -> str:
 
 
 @tool
-def send_message(to: List[str], subject: str, body_html: str, cc: List[str] = None, bcc: List[str] = None) -> str:
+def send_message(to: str, subject: str, body_html: str, cc: str = None, bcc: str = None) -> str:
     """Envía un email nuevo.
     
     Args:
-        to: Lista de destinatarios principales
+        to: Destinatarios principales separados por comas
         subject: Asunto del mensaje
         body_html: Contenido HTML del mensaje
-        cc: Lista de destinatarios en copia (opcional)
-        bcc: Lista de destinatarios en copia oculta (opcional)
+        cc: Destinatarios en copia separados por comas (opcional)
+        bcc: Destinatarios en copia oculta separados por comas (opcional)
         
     Returns:
         Confirmación del envío del mensaje
@@ -170,13 +172,13 @@ def send_message(to: List[str], subject: str, body_html: str, cc: List[str] = No
         
         # Crear mensaje MIME
         message = MIMEMultipart('alternative')
-        message['To'] = ', '.join(to)
+        message['To'] = to
         message['Subject'] = subject
         
         if cc:
-            message['Cc'] = ', '.join(cc)
+            message['Cc'] = cc
         if bcc:
-            message['Bcc'] = ', '.join(bcc)
+            message['Bcc'] = bcc
         
         # Adjuntar contenido HTML
         html_part = MIMEText(body_html, 'html', 'utf-8')
@@ -191,7 +193,7 @@ def send_message(to: List[str], subject: str, body_html: str, cc: List[str] = No
             body={'raw': raw_message}
         ).execute()
         
-        return f"✅ Mensaje enviado exitosamente a {', '.join(to)} (ID: {send_result['id']})"
+        return f"✅ Mensaje enviado exitosamente a {to} (ID: {send_result['id']})"
     except Exception as e:
         return f"❌ Error al enviar el mensaje: {str(e)}"
 
@@ -294,13 +296,13 @@ def delete_message(message_id: str, permanent: bool = False) -> str:
 
 
 @tool
-def modify_labels(message_id: str, add_labels: List[str] = None, remove_labels: List[str] = None) -> str:
+def modify_labels(message_id: str, add_labels: str = None, remove_labels: str = None) -> str:
     """Añade o quita labels (ej: marcar leído/no leído).
     
     Args:
         message_id: ID del mensaje a modificar
-        add_labels: Nombres o IDs de etiquetas a añadir (opcional)
-        remove_labels: Nombres o IDs de etiquetas a quitar (opcional)
+        add_labels: Nombres o IDs de etiquetas a añadir separados por comas (opcional)
+        remove_labels: Nombres o IDs de etiquetas a quitar separados por comas (opcional)
         
     Returns:
         Confirmación de la modificación de etiquetas
@@ -313,6 +315,10 @@ def modify_labels(message_id: str, add_labels: List[str] = None, remove_labels: 
         
         if not add_labels and not remove_labels:
             return "❌ Debe especificar al menos una etiqueta para añadir o quitar"
+        
+        # Convertir strings a listas
+        add_labels_list = [label.strip() for label in add_labels.split(',')] if add_labels else []
+        remove_labels_list = [label.strip() for label in remove_labels.split(',')] if remove_labels else []
         
         # Convertir nombres de etiquetas a IDs si es necesario
         def to_label_id(label):
@@ -328,8 +334,8 @@ def modify_labels(message_id: str, add_labels: List[str] = None, remove_labels: 
                 raise Exception(f"No se encontró la etiqueta '{label}' en tu cuenta de Gmail.")
             return label_id
         
-        add_label_ids = [to_label_id(l) for l in add_labels] if add_labels else None
-        remove_label_ids = [to_label_id(l) for l in remove_labels] if remove_labels else None
+        add_label_ids = [to_label_id(l) for l in add_labels_list] if add_labels_list else None
+        remove_label_ids = [to_label_id(l) for l in remove_labels_list] if remove_labels_list else None
         print(f"[DEBUG][modify_labels] add_label_ids (final): {add_label_ids}")
         print(f"[DEBUG][modify_labels] remove_label_ids (final): {remove_label_ids}")
         
@@ -352,9 +358,9 @@ def modify_labels(message_id: str, add_labels: List[str] = None, remove_labels: 
         # Preparar mensaje de confirmación
         actions = []
         if add_label_ids:
-            actions.append(f"añadidas: {', '.join(add_labels)}")
+            actions.append(f"añadidas: {', '.join(add_labels_list)}")
         if remove_label_ids:
-            actions.append(f"quitadas: {', '.join(remove_labels)}")
+            actions.append(f"quitadas: {', '.join(remove_labels_list)}")
         
         return f"✅ Etiquetas {' y '.join(actions)} exitosamente en el mensaje {message_id}"
     except Exception as e:

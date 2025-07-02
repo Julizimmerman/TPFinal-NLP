@@ -38,7 +38,7 @@ AVAILABLE_TOOLS = """
 - list_messages(query=None, label_ids=None, max_results=10): Listar mensajes
 - get_message(message_id): Obtener mensaje específico
 - send_message(to, subject, body_html, cc=None, bcc=None): Enviar email
-- reply_message(message_id, body_html): Responder a mensaje
+- reply_message(thread_id, body_html, quote_original=True): Responder a mensaje
 - delete_message(message_id, permanent=False): Eliminar mensaje
 - modify_labels(message_id, add_labels=None, remove_labels=None): Modificar etiquetas
 
@@ -46,18 +46,28 @@ AVAILABLE_TOOLS = """
 - list_calendars(): Listar calendarios disponibles
 - list_events(calendar_id, time_min, time_max, query=None): Listar eventos
 - get_event(calendar_id, event_id): Obtener evento específico
-- create_event(calendar_id, summary, start_time, end_time, description=None): Crear evento
-- update_event(calendar_id, event_id, summary=None, start_time=None, end_time=None): Actualizar evento
+- create_event(calendar_id, summary, start, end=None, description=None, location=None, attendees=None): Crear evento
+- update_event(calendar_id, event_id, summary=None, start=None, end=None, description=None, location=None, attendees=None): Actualizar evento
 - delete_event(calendar_id, event_id): Eliminar evento
 
 """
 
-BASE_PROMPT = f"""Eres el módulo de planificación de un asistente de IA con memoria de conversación.
+BASE_PROMPT = f"""Eres el módulo de planificación de un asistente de IA con memoria de conversación que utiliza ejecutores especializados.
 
 *ATENCIÓN IMPORTANTE*: 
 Ignora cualquier mención anterior al día de hoy en la conversación; la fecha de hoy es exactamente {{TODAY}}.
 
 {AVAILABLE_TOOLS}
+
+SISTEMA DE EJECUTORES ESPECIALIZADOS:
+El sistema utiliza ejecutores especializados que se seleccionan automáticamente según el tipo de tarea:
+- weather_executor: Para tareas de clima y meteorología
+- tasks_executor: Para tareas de Google Tasks
+- drive_executor: Para tareas de Google Drive
+- gmail_executor: Para tareas de Gmail
+- calendar_executor: Para tareas de Google Calendar
+
+El router automáticamente selecciona el ejecutor apropiado basándose en el contenido de la tarea.
     
 Contexto y solicitud del usuario: {{input}}
 
@@ -65,18 +75,16 @@ Analiza la entrada cuidadosamente. Si contiene historial de conversación, consi
 Si el usuario se refiere a información anterior (como "esa ciudad", "el clima que pregunté", etc.), 
 usa el contexto de la conversación para entender a qué se refiere.
 
-Divide la solicitud en una lista concisa y ordenada de pasos, USANDO ÚNICAMENTE LAS HERRAMIENTAS LISTADAS ARRIBA.
+Divide la solicitud en una lista concisa y ordenada de pasos. Los ejecutores especializados se encargarán de usar las herramientas apropiadas.
 Responde SOLO con pasos numerados.
 
 Ejemplos:
-- Si el usuario pregunta "¿Cuál es el clima en Madrid?" → "1. Usar get_weather('Madrid')"
-- Si el usuario luego pregunta "¿Y mañana?" → "1. Usar get_weekly_summary('Madrid')"
-- Si el usuario pregunta "¿Qué tal Barcelona?" → "1. Usar get_weather('Barcelona')"
-- Si el usuario dice "Enviale un mail a Maria Lopez para confirmar la reunion" → "1. Construir la direccion de correo de Maria Lopez: 'mlopez@udesa.edu.ar'
-                                                                                 2. Usar send_message(['mlopez@udesa.edu.ar'], 'Confirmación de reunión', contenido apropiado)
-                                                                                 3. Responder al usuario confirmando que el mail se envió"
-- Si el usuario dice "Enviale un mail a marialopez@gmail.com" → "1. Usar send_message(['marialopez@gmail.com'], asunto apropiado, contenido apropiado)
-                                                                2. Responder al usuario confirmando que el mail se envió"
+- Si el usuario pregunta "¿Cuál es el clima en Madrid?" → "1. Obtener el clima actual en Madrid"
+- Si el usuario luego pregunta "¿Y mañana?" → "1. Obtener el pronóstico semanal para Madrid"
+- Si el usuario pregunta "¿Qué tal Barcelona?" → "1. Obtener el clima actual en Barcelona"
+- Si el usuario dice "Enviale un mail a Maria Lopez para confirmar la reunion" → "1. Enviar email de confirmación de reunión a Maria Lopez"
+- Si el usuario dice "Crear una tarea llamada 'Reunión'" → "1. Crear tarea 'Reunión' en Google Tasks"
+- Si el usuario dice "Buscar archivos en Drive" → "1. Buscar archivos en Google Drive"
 """
 
 
@@ -87,9 +95,17 @@ PLANNER_PROMPT = (
 )
 
 REPLANNER_PROMPT = PromptTemplate.from_template(
-    f"""Estás actualizando un plan de múltiples pasos con conciencia de conversación.
+    f"""Estás actualizando un plan de múltiples pasos con conciencia de conversación usando ejecutores especializados.
 
 {AVAILABLE_TOOLS}
+
+SISTEMA DE EJECUTORES ESPECIALIZADOS:
+El sistema utiliza ejecutores especializados que se seleccionan automáticamente según el tipo de tarea:
+- weather_executor: Para tareas de clima y meteorología
+- tasks_executor: Para tareas de Google Tasks
+- drive_executor: Para tareas de Google Drive
+- gmail_executor: Para tareas de Gmail
+- calendar_executor: Para tareas de Google Calendar
 
 Solicitud del usuario: {{input}}
 
@@ -103,7 +119,7 @@ Considera el contexto de la conversación al decidir los próximos pasos. Si el 
 o refiriéndose a información anterior, asegúrate de que el plan aborde su intención real.
 
 IMPORTANTE: 
-- Usa únicamente las herramientas listadas arriba al crear el nuevo plan.
+- Los ejecutores especializados se encargarán de usar las herramientas apropiadas automáticamente.
 - NO generes respuestas falsas sobre pasos que no se han ejecutado.
 - Si hay pasos pendientes en el plan, continúa ejecutándolos.
 - Solo genera una respuesta final cuando TODOS los pasos necesarios se hayan completado exitosamente.
@@ -116,43 +132,50 @@ NO repitas pasos completados.
 
 Ejemplo:
 - Plan original:
-  1. Usar create_event para crear "Reunión con Carlos García" mañana a las 10 AM.
+  1. Crear evento "Reunión con Carlos García" mañana a las 10 AM.
   2. Enviar email de confirmación a Carlos García.
 - Usuario dice: "Finalmente, que la reunión sea con Ana Fernández."  
   → Salida:
   PLAN:
-  1. **Construir email de Ana Fernández: "afernandez@udesa.edu.ar".**  
-  2. Usar list_events para buscar evento "Reunión con Carlos García" mañana.  
-  3. Usar update_event con el ID obtenido para cambiar título a "Reunión con Ana Fernández".  
-  4. Usar send_message para notificar a "afernandez@udesa.edu.ar" que la reunión fue reasignada.  
-  5. Responder al usuario confirmando la reasignación.  
+  1. Buscar evento "Reunión con Carlos García" mañana.  
+  2. Actualizar evento para cambiar título a "Reunión con Ana Fernández".  
+  3. Enviar email de notificación a Ana Fernández sobre la reasignación.  
+  4. Confirmar la reasignación al usuario.  
 
 Ejemplo:
 - Plan original:
-  1. Usar create_event para crear "Reunión con Carlos García" mañana a las 10 AM.
+  1. Crear evento "Reunión con Carlos García" mañana a las 10 AM.
   2. Enviar email de confirmación a Carlos García.
 - Usuario dice: "Finalmente, que la reunión sea con juanita@gmail.com."  
   → Salida:
   PLAN:
-  2. Usar list_events para buscar evento "Reunión con Carlos García" mañana.  
-  3. Usar update_event con el ID obtenido para cambiar título a "Reunión con Juanita".  
-  4. Usar send_message para notificar a "juanita@gmail.com" que la reunión fue reasignada.  
-  5. Responder al usuario confirmando la reasignación. 
+  1. Buscar evento "Reunión con Carlos García" mañana.  
+  2. Actualizar evento para cambiar título a "Reunión con Juanita".  
+  3. Enviar email de notificación a juanita@gmail.com sobre la reasignación.  
+  4. Confirmar la reasignación al usuario. 
 """
 )
 
-EXECUTOR_PREFIX = f"""Eres el agente de ejecución con conciencia de conversación.
+EXECUTOR_PREFIX = f"""Eres el agente de ejecución con conciencia de conversación que utiliza ejecutores especializados.
 
 *ATENCIÓN IMPORTANTE*: 
     Ignora cualquier mención anterior al día de hoy en la conversación; la fecha de hoy es exactamente {TODAY}.
 
+SISTEMA DE EJECUTORES ESPECIALIZADOS:
+El sistema utiliza ejecutores especializados que se seleccionan automáticamente según el tipo de tarea:
+- weather_executor: Para tareas de clima y meteorología
+- tasks_executor: Para tareas de Google Tasks
+- drive_executor: Para tareas de Google Drive
+- gmail_executor: Para tareas de Gmail
+- calendar_executor: Para tareas de Google Calendar
+
 INSTRUCCIONES IMPORTANTES:
-- Si el paso contiene toda la información necesaria (por ejemplo, nombre del calendario, hora, título, participantes), ejecuta la acción directamente y responde con el resultado.
-- Si el usuario especifica el calendario, la hora y el título del evento, ejecuta create_event directamente, sin pedir confirmación.
+- Los ejecutores especializados se encargarán de usar las herramientas apropiadas automáticamente.
+- Si el paso contiene toda la información necesaria, ejecuta la acción directamente y responde con el resultado.
 - No pidas confirmación si el usuario ya especificó todos los datos requeridos.
 - Solo pide confirmación al usuario si hay múltiples candidatos igualmente válidos o si la acción podría afectar a varios elementos y no es posible decidir automáticamente.
 - Si la consulta del usuario es clara y hay un solo resultado que coincide, ejecuta la acción directamente y responde con el resultado.
-- Si la consulta del usuario menciona "el último", "más reciente", "más nuevo" o similar, selecciona automáticamente el mensaje más reciente entre los candidatos y ejecuta la acción, sin pedir confirmación.
+- Si la consulta del usuario menciona "el último", "más reciente", "más nuevo" o similar, selecciona automáticamente el elemento más reciente entre los candidatos y ejecuta la acción, sin pedir confirmación.
 - No pidas confirmación si la acción es segura y el resultado es único.
 - Lleva a cabo la subtarea asignada y responde de manera concisa.
 - Si la tarea se refiere al contexto de conversación anterior, usa esa información apropiadamente.
@@ -160,20 +183,12 @@ INSTRUCCIONES IMPORTANTES:
 - Para tareas como "crear varias tareas", "listar y luego completar", etc., usa las herramientas necesarias en orden.
 - No te limites a una sola herramienta si la tarea requiere varios pasos.
 - Ejecuta todas las acciones solicitadas antes de responder.
-- IMPORTANTE: Si ves add_subtask en el paso, úsalo exactamente como está especificado. NO lo conviertas en create_task.
-
-EJEMPLOS DE USO MÚLTIPLE:
-- "Crear tarea X y tarea Y" → usa create_task dos veces
-- "Listar tareas y completar X" → usa list_tasks luego complete_task
-- "Buscar tareas con palabra X y eliminar la primera" → usa search_tasks luego delete_task
-- "Obtener clima y consejo de ropa" → usa get_weather luego get_clothing_advice
-- "Añadir subtarea X a tarea Y" → usa add_subtask('Y', 'X') UNA SOLA VEZ (NO crear tareas separadas)
 
 EJEMPLOS DE ACCIÓN DIRECTA:
-- Paso: Usar create_event('Eventos', 'Reunión con Carla', '2024-07-03T15:00:00', '2024-07-03T16:00:00')
-  → El executor debe ejecutar la acción directamente y responder con la confirmación, sin pedir confirmación adicional al usuario.
-- Paso: Usar create_task('Comprar leche')
-  → Ejecuta create_task directamente y responde con la confirmación.
+- Paso: "Crear evento 'Reunión con Carla' mañana a las 10 AM"
+  → El executor debe ejecutar la acción directamente y responder con la confirmación.
+- Paso: "Crear tarea 'Comprar leche'"
+  → Ejecuta la creación de tarea directamente y responde con la confirmación.
 
 - Si en el paso aparece el nombre y apellido de alguna persona en contexto de correo o calendario, **construye su dirección de e-mail** como: [primera letra del nombre + apellido completo + "@udesa.edu.ar"]
 Ejemplo: "Alejandro Ramos" → "aramos@udesa.edu.ar".

@@ -4,6 +4,7 @@ from langgraph.graph import StateGraph, END
 from .schemas import PlanExecute, Response, Plan, Act
 from .planner import make_plan
 from .executor import agent_executor
+from .executors import execute_specialized_task, execute_multiple_tasks
 from .prompts import REPLANNER_PROMPT
 from .config import LLM_PLANNER  # we reuse the planner LLM for replanning
 from .memory import memory
@@ -157,31 +158,36 @@ async def execute_step(state: PlanExecute):
         Ejecuta todas estas tareas en secuencia, usando múltiples herramientas si es necesario.{context_info}"""
     
     print(f"🔄 [DEBUG] Tarea formateada: {task_formatted}")
-    print("🔄 [DEBUG] Invocando agent_executor...")
+    print("🔄 [DEBUG] Invocando ejecutor especializado...")
     
     try:
-        agent_response = await agent_executor.ainvoke(
-            {"input": task_formatted}
-        )
-        print(f"🔄 [DEBUG] Respuesta del agente: {agent_response}")
+        # Usar el ejecutor especializado directamente
+        if len(steps_to_execute) == 1:
+            # Ejecutar una sola tarea
+            result = await execute_specialized_task(task_formatted, session_id)
+        else:
+            # Ejecutar múltiples tareas relacionadas
+            result = await execute_multiple_tasks(steps_to_execute, session_id)
+        
+        print(f"🔄 [DEBUG] Respuesta del ejecutor especializado: {result}")
         
         # Agregar todos los pasos completados a past_steps
         new_past_steps = past_steps[:]
         for step in steps_to_execute:
-            new_past_steps.append((step, agent_response["output"]))
-            tool_results.append(agent_response["output"])  # Acumula el resultado de la tool
+            new_past_steps.append((step, result))
+            tool_results.append(result)  # Acumula el resultado de la tool
         
         print(f"🔄 [DEBUG] tool_results acumulados: {tool_results}")
         # Remover los pasos ejecutados del plan
         remaining_plan = plan[len(steps_to_execute):] if len(plan) > len(steps_to_execute) else []
         
-        result = {
+        result_dict = {
             "past_steps": new_past_steps,
             "plan": remaining_plan,
             "tool_results": tool_results
         }
-        print(f"🔄 [DEBUG] Resultado de execute_step: {result}")
-        return result
+        print(f"🔄 [DEBUG] Resultado de execute_step: {result_dict}")
+        return result_dict
         
     except Exception as e:
         print(f"🔄 [DEBUG] Error en execute_step: {e}")
