@@ -47,6 +47,10 @@ async def plan_step(state: PlanExecute):
     # Obtener session_id del estado
     session_id = state.get("session_id")
     
+    # LIMPIAR EL ESTADO AL ENTRAR AL PLANNER
+    # Limpiar plan y past_steps anteriores para evitar acumulación
+    print("🔄 [DEBUG] Limpiando plan y past_steps anteriores...")
+    
     # Crear plan con contexto de conversación
     plan = await make_plan(user_input, session_id)
     print(f"🔄 [DEBUG] Plan generado: {plan.steps}")
@@ -54,11 +58,12 @@ async def plan_step(state: PlanExecute):
     # Inicializar conversation_history si no existe
     conversation_history = state.get("conversation_history", [])
     
-    # LIMPIAR EL ESTADO: Eliminar respuestas previas para evitar terminación prematura
-    # Solo mantener el input, plan, conversation_history y session_id
+    # ESTADO COMPLETAMENTE LIMPIO: Eliminar plan anterior, past_steps, respuestas previas
+    # Solo mantener el input, nuevo plan, conversation_history y session_id
     clean_state = {
         "input": user_input,  # Ensure input is preserved in state
-        "plan": plan.steps,
+        "plan": plan.steps,   # Nuevo plan generado (limpia el anterior)
+        "past_steps": [],     # Lista vacía de pasos (limpia los anteriores)
         "conversation_history": conversation_history
     }
     
@@ -66,7 +71,8 @@ async def plan_step(state: PlanExecute):
     if session_id:
         clean_state["session_id"] = session_id
     
-    print(f"🔄 [DEBUG] Estado limpiado para nueva ejecución")
+    print(f"🔄 [DEBUG] Estado completamente limpiado - plan anterior y past_steps eliminados")
+    print(f"🔄 [DEBUG] Nuevo estado para nueva ejecución: plan={len(plan.steps)} pasos, past_steps=vacío")
     return clean_state
 
 async def execute_step(state: PlanExecute):
@@ -222,7 +228,7 @@ async def execute_step(state: PlanExecute):
 async def replan_or_finish(state: PlanExecute):
     """Decide whether to finish or continue."""
     print("🔄 [DEBUG] Iniciando replan_or_finish...")
-    print(f"🔄 [DEBUG] Estado actual: {state}")
+    # print(f"🔄 [DEBUG] Estado actual: {state}")
     
     plan = state.get("plan", [])
     past_steps = state.get("past_steps", [])
