@@ -54,11 +54,20 @@ async def plan_step(state: PlanExecute):
     # Inicializar conversation_history si no existe
     conversation_history = state.get("conversation_history", [])
     
-    return {
+    # LIMPIAR EL ESTADO: Eliminar respuestas previas para evitar terminación prematura
+    # Solo mantener el input, plan, conversation_history y session_id
+    clean_state = {
         "input": user_input,  # Ensure input is preserved in state
         "plan": plan.steps,
         "conversation_history": conversation_history
     }
+    
+    # Preservar session_id si existe
+    if session_id:
+        clean_state["session_id"] = session_id
+    
+    print(f"🔄 [DEBUG] Estado limpiado para nueva ejecución")
+    return clean_state
 
 async def execute_step(state: PlanExecute):
     print("🔄 [DEBUG] Iniciando execute_step...")
@@ -440,10 +449,28 @@ async def replan_or_finish(state: PlanExecute):
 def should_finish(state: PlanExecute):
     has_response = state.get("response") is not None
     has_plan = bool(state.get("plan", []))
-    decision = END if has_response else "executor"
+    past_steps = state.get("past_steps", [])
+    
+    # Verificar si la respuesta es válida (no vacía y no es una respuesta de error genérica)
+    response = state.get("response", "")
+    response_is_valid = (has_response and 
+                        response and 
+                        isinstance(response, str) and 
+                        len(response.strip()) > 10 and
+                        not response.startswith("No se pudo") and
+                        not response.startswith("Error"))
+    
+    # Verificar si hay pasos completados exitosamente
+    has_successful_steps = any(step.success for step in past_steps) if past_steps else False
+    
+    # Solo terminar si hay una respuesta válida Y no hay más pasos pendientes
+    decision = END if (response_is_valid and not has_plan) else "executor"
+    
     print(f"🔄 [DEBUG] should_finish decision: {decision}")
     print(f"🔄 [DEBUG] Estado tiene respuesta: {has_response}")
+    print(f"🔄 [DEBUG] Respuesta es válida: {response_is_valid}")
     print(f"🔄 [DEBUG] Estado tiene plan: {has_plan}")
+    print(f"🔄 [DEBUG] Hay pasos exitosos: {has_successful_steps}")
     return decision
 
 def determine_executor_from_task(task: str) -> str:
