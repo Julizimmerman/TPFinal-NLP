@@ -102,11 +102,16 @@ Pasos ya completados:
 Considera el contexto de la conversación al decidir los próximos pasos. Si el usuario está haciendo preguntas de seguimiento
 o refiriéndose a información anterior, asegúrate de que el plan aborde su intención real.
 
-IMPORTANTE: Usa únicamente las herramientas listadas arriba al crear el nuevo plan.
+IMPORTANTE: 
+- Usa únicamente las herramientas listadas arriba al crear el nuevo plan.
+- NO generes respuestas falsas sobre pasos que no se han ejecutado.
+- Si hay pasos pendientes en el plan, continúa ejecutándolos.
+- Solo genera una respuesta final cuando TODOS los pasos necesarios se hayan completado exitosamente.
 
 Devuelve CUALQUIERA DE LAS DOS OPCIONES:
-1) "RESPUESTA: <respuesta final>" si la tarea está completa, O
-2) "PLAN: <nuevo plan numerado>" si quedan más pasos.
+1) "RESPUESTA: <respuesta final>" SOLO si TODOS los pasos necesarios están completados y tienes información suficiente para responder al usuario.
+2) "PLAN: <nuevo plan numerado>" si quedan pasos por ejecutar o necesitas más información.
+
 NO repitas pasos completados.
 
 Ejemplo:

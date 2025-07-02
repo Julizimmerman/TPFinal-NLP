@@ -1,8 +1,9 @@
 # server.py
 import logging
+import asyncio
 from urllib.parse import parse_qs
 
-from fastapi import FastAPI, Request, Response, HTTPException
+from fastapi import FastAPI, Request, Response, HTTPException, BackgroundTasks
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import Message
 from twilio.request_validator import RequestValidator
@@ -88,19 +89,39 @@ async def health_check():
     }
 
 @APP.post("/whatsapp")
-async def whatsapp_reply_twilio(request: Request):
+async def whatsapp_reply_twilio(request: Request, background_tasks: BackgroundTasks):
     """Endpoint principal para recibir mensajes de WhatsApp via Twilio."""
     try:
         LOGGER.info("Received WhatsApp message")
-        xml = await WSP_AGENT.handle_message(request)
-        LOGGER.info("Successfully processed WhatsApp message")
-        return Response(content=xml, media_type="application/xml")
-    except HTTPException as e:
-        LOGGER.error("Handled error: %s", e.detail)
-        raise
+        
+        # Parsear los datos del formulario inmediatamente
+        # porque el request body se consume y no se puede leer de nuevo
+        form_data = await request.form()
+        form_dict = dict(form_data)
+        
+        # Responder inmediatamente a Twilio con TwiML vacío
+        # Esto evita el timeout de 15 segundos
+        background_tasks.add_task(process_whatsapp_message_background, form_dict)
+        
+        # Respuesta inmediata vacía - Twilio sabrá que recibimos el mensaje
+        return Response(
+            content='<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
+            media_type="application/xml"
+        )
+        
     except Exception as e:
-        LOGGER.exception("Unhandled exception processing WhatsApp message")
+        LOGGER.exception("Error setting up background task for WhatsApp message")
         raise HTTPException(status_code=500, detail="Internal server error")
+
+async def process_whatsapp_message_background(form_data: dict):
+    """Procesa el mensaje de WhatsApp en segundo plano y envía la respuesta."""
+    try:
+        LOGGER.info("Processing WhatsApp message in background")
+        # Procesar el mensaje y enviar respuesta usando API de Twilio
+        await WSP_AGENT.handle_message_async(form_data)
+        LOGGER.info("Successfully processed WhatsApp message in background")
+    except Exception as e:
+        LOGGER.exception("Error processing WhatsApp message in background")
 
 @APP.post("/whatsapp-test")
 async def whatsapp_test(request: Request):

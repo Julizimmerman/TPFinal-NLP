@@ -1,12 +1,14 @@
 # channel.py
 import base64, logging, requests
+import asyncio
 from abc import ABC, abstractmethod
 
 from fastapi import Request, HTTPException
 from twilio.twiml.messaging_response import MessagingResponse
+from twilio.rest import Client
 
 from server.agent import Agent
-from server.config import TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID
+from server.config import TWILIO_AUTH_TOKEN, TWILIO_ACCOUNT_SID, TWILIO_WHATSAPP_NUMBER
 
 LOGGER = logging.getLogger("whatsapp")
 
@@ -42,6 +44,8 @@ class WhatsAppAgentTwilio(WhatsAppAgent):
         if not (TWILIO_AUTH_TOKEN and TWILIO_ACCOUNT_SID):
             raise ValueError("Twilio credentials are not configured")
         self.agent = Agent()
+        # Inicializar cliente de Twilio para envío de mensajes
+        self.twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
     
     def _clean_whatsapp_text(self, text: str) -> str:
         """Limpia el texto para que sea compatible con WhatsApp/Twilio."""
@@ -62,6 +66,104 @@ class WhatsAppAgentTwilio(WhatsAppAgent):
         text = re.sub(r'\n+', '\n', text)
         
         return text.strip()
+
+    async def send_whatsapp_message(self, to_number: str, message: str):
+        """Envía un mensaje de WhatsApp usando la API REST de Twilio."""
+        try:
+            # Limpiar el texto antes de enviarlo
+            clean_message = self._clean_whatsapp_text(message)
+            
+            # Limitar la longitud de la respuesta para WhatsApp
+            if len(clean_message) > 1600:  # WhatsApp tiene límite de caracteres
+                clean_message = clean_message[:1600] + "..."
+                LOGGER.warning("Respuesta truncada por límite de WhatsApp")
+            
+            # Determinar el número de origen
+            from_number = f"whatsapp:{TWILIO_WHATSAPP_NUMBER}" if TWILIO_WHATSAPP_NUMBER != "sandbox" else "whatsapp:+14155238886"
+            
+            # Enviar mensaje usando la API de Twilio
+            message_instance = self.twilio_client.messages.create(
+                body=clean_message,
+                from_=from_number,
+                to=to_number
+            )
+            
+            LOGGER.info(f"✅ Mensaje enviado exitosamente. SID: {message_instance.sid}")
+            LOGGER.info(f"📱 De: {from_number} → Para: {to_number}")
+            LOGGER.info(f"📝 Contenido: {clean_message[:100]}{'...' if len(clean_message) > 100 else ''}")
+            
+        except Exception as e:
+            LOGGER.error(f"❌ Error enviando mensaje de WhatsApp: {e}")
+            raise
+
+    async def handle_message_async(self, form_data: dict):
+        """Maneja mensajes de WhatsApp de forma asíncrona y envía respuesta usando API de Twilio."""
+        try:
+            sender = form_data.get("From", "").strip()
+            content = form_data.get("Body", "").strip()
+            
+            if not sender:
+                LOGGER.error("Missing 'From' in request form")
+                return
+
+            LOGGER.info(f"📱 Procesando mensaje de {sender}: {content[:50]}{'...' if len(content) > 50 else ''}")
+
+            # Collect ALL images (you'll forward only the first one for now)
+            images = []
+            num_media = int(form_data.get("NumMedia", "0"))
+            for i in range(num_media):
+                url = form_data.get(f"MediaUrl{i}", "")
+                ctype = form_data.get(f"MediaContentType{i}", "")
+                if url and ctype.startswith("image/"):
+                    try:
+                        images.append({
+                            "url": url,
+                            "data_uri": twilio_url_to_data_uri(url, ctype),
+                        })
+                    except Exception as err:
+                        LOGGER.error("Failed to download %s: %s", url, err)
+
+            # Assemble payload for the LangGraph agent
+            input_data = {
+                "id": sender,
+                "user_message": content,
+            }
+            if images:
+                # Pass all images to the agent
+                input_data["images"] = [
+                    {"image_url": {"url": img["data_uri"]}} for img in images
+                ]
+
+            # Procesar mensaje con el agente con manejo robusto de errores
+            reply = None
+            try:
+                LOGGER.info("🤖 Procesando mensaje con el agente...")
+                reply = await self.agent.invoke(**input_data)
+                LOGGER.info("✅ Agente procesó el mensaje exitosamente")
+            except Exception as e:
+                LOGGER.error(f"❌ Error crítico en el agente: {e}", exc_info=True)
+                # Respuesta de emergencia si todo lo demás falla
+                reply = "Lo siento, estoy experimentando dificultades técnicas. Por favor, inténtalo de nuevo en unos momentos."
+            
+            # Asegurar que tenemos una respuesta válida
+            if not reply or not isinstance(reply, str) or not reply.strip():
+                LOGGER.warning("El agente no devolvió una respuesta válida")
+                reply = "Disculpa, no pude procesar tu mensaje. Por favor, inténtalo de nuevo."
+            
+            # Enviar la respuesta usando la API de Twilio
+            await self.send_whatsapp_message(sender, reply)
+            
+        except Exception as e:
+            LOGGER.exception(f"❌ Error crítico en handle_message_async: {e}")
+            # Intentar enviar mensaje de error
+            try:
+                if 'sender' in locals() and sender:
+                    await self.send_whatsapp_message(
+                        sender, 
+                        "Lo siento, ocurrió un error inesperado. Por favor, inténtalo de nuevo."
+                    )
+            except:
+                LOGGER.error("No se pudo enviar mensaje de error")
 
     async def handle_message(self, request: Request) -> str:
         form = await request.form()
