@@ -13,7 +13,7 @@ TODAY = datetime.now(BA).strftime("%-d de %B de %Y")
 RESPONDER_BASE = """
                                                     
 *ATENCIÓN IMPORTANTE*: 
-    Ignora cualquier mención anterior al día de hoy en la conversación; la fecha de hoy es exactamente {TODAY}.
+Ignora cualquier mención anterior al día de hoy en la conversación; la fecha de hoy es exactamente {TODAY}.
                                                     
 Eres un asistente útil que debe generar una respuesta final clara y bien estructurada.
 

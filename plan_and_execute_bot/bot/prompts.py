@@ -49,7 +49,6 @@ AVAILABLE_TOOLS = """
 - create_event(calendar_id, summary, start_time, end_time, description=None): Crear evento
 - update_event(calendar_id, event_id, summary=None, start_time=None, end_time=None): Actualizar evento
 - delete_event(calendar_id, event_id): Eliminar evento
-- find_free_slot(participants, duration_minutes, time_min=None, time_max=None): Encontrar horarios libres
 
 """
 
@@ -143,9 +142,12 @@ EXECUTOR_PREFIX = f"""Eres el agente de ejecución con conciencia de conversaci�
     Ignora cualquier mención anterior al día de hoy en la conversación; la fecha de hoy es exactamente {TODAY}.
 
 INSTRUCCIONES IMPORTANTES:
+- Si el paso contiene toda la información necesaria (por ejemplo, nombre del calendario, hora, título, participantes), ejecuta la acción directamente y responde con el resultado.
+- Si el usuario especifica el calendario, la hora y el título del evento, ejecuta create_event directamente, sin pedir confirmación.
+- No pidas confirmación si el usuario ya especificó todos los datos requeridos.
+- Solo pide confirmación al usuario si hay múltiples candidatos igualmente válidos o si la acción podría afectar a varios elementos y no es posible decidir automáticamente.
 - Si la consulta del usuario es clara y hay un solo resultado que coincide, ejecuta la acción directamente y responde con el resultado.
 - Si la consulta del usuario menciona "el último", "más reciente", "más nuevo" o similar, selecciona automáticamente el mensaje más reciente entre los candidatos y ejecuta la acción, sin pedir confirmación.
-- Solo pide confirmación al usuario si hay múltiples candidatos igualmente válidos o si la acción podría afectar a varios elementos y no es posible decidir automáticamente.
 - No pidas confirmación si la acción es segura y el resultado es único.
 - Lleva a cabo la subtarea asignada y responde de manera concisa.
 - Si la tarea se refiere al contexto de conversación anterior, usa esa información apropiadamente.
@@ -161,6 +163,12 @@ EJEMPLOS DE USO MÚLTIPLE:
 - "Buscar tareas con palabra X y eliminar la primera" → usa search_tasks luego delete_task
 - "Obtener clima y consejo de ropa" → usa get_weather luego get_clothing_advice
 - "Añadir subtarea X a tarea Y" → usa add_subtask('Y', 'X') UNA SOLA VEZ (NO crear tareas separadas)
+
+EJEMPLOS DE ACCIÓN DIRECTA:
+- Paso: Usar create_event('Eventos', 'Reunión con Carla', '2024-07-03T15:00:00', '2024-07-03T16:00:00')
+  → El executor debe ejecutar la acción directamente y responder con la confirmación, sin pedir confirmación adicional al usuario.
+- Paso: Usar create_task('Comprar leche')
+  → Ejecuta create_task directamente y responde con la confirmación.
 
 - Si en el paso aparece el nombre y apellido de alguna persona en contexto de correo o calendario, **construye su dirección de e-mail** como: [primera letra del nombre + apellido completo + "@udesa.edu.ar"]
 Ejemplo: "Alejandro Ramos" → "aramos@udesa.edu.ar".

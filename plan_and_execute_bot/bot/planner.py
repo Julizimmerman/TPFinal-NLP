@@ -17,7 +17,7 @@ async def make_plan(user_input: str, session_id: str = None) -> Plan:
     # Obtener contexto de conversación si hay una sesión activa
     context = ""
     if session_id:
-        context = memory.get_context_for_planning(session_id)
+        context = memory.get_context_for_planning(session_id, max_messages=5)
         print(f"🧠 [PLANNER] Usando contexto de conversación para sesión {session_id[:8]}...")
     
     # Preparar el input con contexto

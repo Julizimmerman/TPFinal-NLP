@@ -63,6 +63,7 @@ async def execute_step(state: PlanExecute):
     print("🔄 [DEBUG] Iniciando execute_step...")
     plan = state["plan"]
     past_steps = state.get("past_steps", [])
+    tool_results = state.get("tool_results", [])  # Acumula resultados de tools
     
     print(f"🔄 [DEBUG] Plan actual: {plan}")
     print(f"🔄 [DEBUG] Pasos completados: {len(past_steps)}")
@@ -168,13 +169,16 @@ async def execute_step(state: PlanExecute):
         new_past_steps = past_steps[:]
         for step in steps_to_execute:
             new_past_steps.append((step, agent_response["output"]))
+            tool_results.append(agent_response["output"])  # Acumula el resultado de la tool
         
+        print(f"🔄 [DEBUG] tool_results acumulados: {tool_results}")
         # Remover los pasos ejecutados del plan
         remaining_plan = plan[len(steps_to_execute):] if len(plan) > len(steps_to_execute) else []
         
         result = {
             "past_steps": new_past_steps,
-            "plan": remaining_plan
+            "plan": remaining_plan,
+            "tool_results": tool_results
         }
         print(f"🔄 [DEBUG] Resultado de execute_step: {result}")
         return result
@@ -226,7 +230,7 @@ async def replan_or_finish(state: PlanExecute):
             session_id=session_id,
             past_steps=past_steps
         )
-        
+        print(f"🔄 [DEBUG] [RESPONSE] Respuesta final generada: {final_response}")
         return {"response": final_response}
     
     plan_str = "\n".join(f"{i+1}. {s}" for i, s in enumerate(plan))
@@ -253,7 +257,7 @@ async def replan_or_finish(state: PlanExecute):
             session_id=session_id,
             past_steps=past_steps
         )
-        
+        print(f"🔄 [DEBUG] [RESPONSE] Respuesta final generada: {final_response}")
         return {"response": final_response}
     
     # Incluir contexto de conversación en el replanning
@@ -286,8 +290,8 @@ async def replan_or_finish(state: PlanExecute):
                 session_id=session_id,
                 past_steps=past_steps
             )
-            
             result = {"response": final_response}
+            print(f"🔄 [DEBUG] [RESPONSE] Respuesta final generada: {final_response}")
             print(f"🔄 [DEBUG] Finalizando con respuesta del responder: {result}")
             return result
             
@@ -301,14 +305,13 @@ async def replan_or_finish(state: PlanExecute):
                 return result
             else:
                 print("🔄 [DEBUG] Plan vacío, finalizando con responder...")
-                
                 final_response = await generate_final_response(
                     query=original_input,
                     tool_result="No se pudo generar un plan válido para continuar.",
                     session_id=session_id,
                     past_steps=past_steps
                 )
-                
+                print(f"🔄 [DEBUG] [RESPONSE] Respuesta final generada: {final_response}")
                 return {"response": final_response}
         else:
             # fallback: usar el responder para procesar la respuesta
@@ -318,21 +321,20 @@ async def replan_or_finish(state: PlanExecute):
                 session_id=session_id,
                 past_steps=past_steps
             )
-            
             result = {"response": final_response}
+            print(f"🔄 [DEBUG] [RESPONSE] Respuesta final generada: {final_response}")
             print(f"🔄 [DEBUG] Fallback - respuesta final del responder: {result}")
             return result
             
     except Exception as e:
         print(f"🔄 [DEBUG] Error en replanner: {e}")
-        
         final_response = await generate_final_response(
             query=original_input,
             tool_result=f"Error en el proceso de replanificación: {str(e)}",
             session_id=session_id,
             past_steps=past_steps
         )
-        
+        print(f"🔄 [DEBUG] [RESPONSE] Respuesta final generada: {final_response}")
         return {"response": final_response}
 
 def should_finish(state: PlanExecute):
@@ -356,7 +358,7 @@ def build_chatbot_graph():
     graph.set_entry_point("planner")
     graph.add_edge("planner", "executor")
     graph.add_edge("executor", "replan")
-    graph.add_conditional_edges("replan", should_finish)
+    graph.add_conditional_edges("replan", should_finish) 
 
     compiled_graph = graph.compile()
     print("🔄 [DEBUG] Grafo compilado exitosamente!")

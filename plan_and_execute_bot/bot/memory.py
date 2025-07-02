@@ -97,6 +97,12 @@ class ConversationMemory:
         }
         
         self.sessions[session_id].append(message)
+        
+        # Mantener solo los últimos 5 mensajes
+        if len(self.sessions[session_id]) > 5:
+            self.sessions[session_id] = self.sessions[session_id][-5:]
+            print(f"🧠 [MEMORY] Historial limitado a 5 mensajes en sesión {session_id[:8]}...")
+        
         print(f"🧠 [MEMORY] Mensaje agregado a sesión {session_id[:8]}...")
         
         # Guardar automáticamente después de cada mensaje
@@ -121,12 +127,12 @@ class ConversationMemory:
         
         return history
     
-    def get_context_for_planning(self, session_id: str, max_messages: int = 10) -> str:
+    def get_context_for_planning(self, session_id: str, max_messages: int = 5) -> str:
         """Obtener contexto de conversación para el planificador.
         
         Args:
             session_id: ID de la sesión
-            max_messages: Máximo número de mensajes a incluir
+            max_messages: Máximo número de mensajes a incluir (por defecto 5)
             
         Returns:
             Contexto formateado para el planificador

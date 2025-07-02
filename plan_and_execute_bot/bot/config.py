@@ -38,8 +38,8 @@ class Settings:
             print("AZURE_OPENAI_API_VERSION=2024-02-15-preview")
             print("AZURE_OPENAI_DEPLOYMENT=gpt-4o-mini")
             print("# Opcional: usar deployments separados")
-            print("# AZURE_OPENAI_PLANNER_DEPLOYMENT=gpt-4")
-            print("# AZURE_OPENAI_EXECUTOR_DEPLOYMENT=gpt-35-turbo")
+            print("# AZURE_OPENAI_PLANNER_DEPLOYMENT=gpt-4o-mini")
+            print("# AZURE_OPENAI_EXECUTOR_DEPLOYMENT=gpt-4o-mini")
             print("TAVILY_API_KEY=tu_clave_tavily_aqui  # opcional")
             sys.exit(1)
     

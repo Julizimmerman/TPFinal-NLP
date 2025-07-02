@@ -70,7 +70,7 @@ async def test_memory_system():
         
         # Probar contexto para planificación
         print("\n🧠 Contexto para planificación:")
-        context = memory.get_context_for_planning(session_id)
+        context = memory.get_context_for_planning(session_id, max_messages=5)
         print(context)
         
         print("\n✅ ¡Prueba de memoria completada exitosamente!")
@@ -116,8 +116,50 @@ async def test_multiple_sessions():
     except Exception as e:
         print(f"❌ Error en prueba de múltiples sesiones: {e}")
 
+async def test_message_limit():
+    """Prueba que el historial se limite a 5 mensajes."""
+    try:
+        print("\n🔄 Probando limitación de 5 mensajes...")
+        from bot.memory import memory
+        
+        # Crear una nueva sesión
+        session_id = memory.create_session()
+        
+        # Agregar más de 5 mensajes
+        for i in range(1, 8):  # 7 mensajes
+            memory.add_message(session_id, "user", f"Mensaje del usuario {i}")
+            memory.add_message(session_id, "assistant", f"Respuesta del asistente {i}")
+        
+        # Verificar que solo quedan los últimos 5 mensajes
+        history = memory.get_conversation_history(session_id)
+        print(f"📝 Total de mensajes en historial: {len(history)}")
+        
+        if len(history) == 5:
+            print("✅ ¡Limitación de 5 mensajes funciona correctamente!")
+            print("📝 Últimos 5 mensajes:")
+            for i, msg in enumerate(history, 1):
+                role_display = "Usuario" if msg['role'] == 'user' else "Asistente"
+                print(f"  {i}. {role_display}: {msg['content']}")
+        else:
+            print(f"❌ Error: Se esperaban 5 mensajes, pero hay {len(history)}")
+        
+        # Verificar que el contexto también respeta el límite
+        context = memory.get_context_for_planning(session_id, max_messages=5)
+        context_lines = context.split('\n')
+        message_lines = [line for line in context_lines if line.startswith('Usuario:') or line.startswith('Asistente:')]
+        
+        print(f"📝 Líneas de mensajes en contexto: {len(message_lines)}")
+        if len(message_lines) == 5:
+            print("✅ ¡Contexto también respeta el límite de 5 mensajes!")
+        else:
+            print(f"❌ Error en contexto: Se esperaban 5 líneas, pero hay {len(message_lines)}")
+        
+    except Exception as e:
+        print(f"❌ Error en prueba de limitación: {e}")
+
 if __name__ == "__main__":
     print("🚀 Iniciando pruebas del sistema de memoria\n")
     asyncio.run(test_memory_system())
     asyncio.run(test_multiple_sessions())
+    asyncio.run(test_message_limit())
     print("\n🎉 ¡Todas las pruebas completadas!") 

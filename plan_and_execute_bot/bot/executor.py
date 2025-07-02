@@ -47,7 +47,6 @@ from .tools.calendar import (
     create_event,
     update_event,
     delete_event,
-    find_free_slot
 )
 
 # Todas las herramientas disponibles
@@ -85,7 +84,6 @@ TOOLS = [
     create_event,
     update_event,
     delete_event,
-    find_free_slot
 ]
 
 # Configuración optimizada para permitir múltiples llamadas a herramientas

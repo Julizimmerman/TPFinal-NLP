@@ -43,12 +43,12 @@ async def chat():
             print(f"🧠 Nueva sesión iniciada: {session_id[:8]}...")
             continue
         elif user_input == '/historial':
-            # Mostrar historial de la conversación actual
-            history = memory.get_conversation_history(session_id)
+            # Mostrar historial de la conversación actual (últimos 5 mensajes)
+            history = memory.get_conversation_history(session_id, limit=5)
             if not history:
                 print("📝 No hay historial en esta conversación.")
             else:
-                print("📝 Historial de conversación:")
+                print("📝 Historial de conversación (últimos 5 mensajes):")
                 for msg in history:
                     role_display = "Usuario" if msg['role'] == 'user' else "Asistente"
                     timestamp = msg['timestamp'][:19]  # Solo fecha y hora
