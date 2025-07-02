@@ -142,26 +142,14 @@ async def execute_step(state: PlanExecute):
     
     plan_str = "\n".join(f"{i+1}. {step}" for i, step in enumerate(plan))
     
-    # Buscar el último resultado exitoso de los pasos previos
-    last_success_result = None
-    if past_steps:
-        for step_result in reversed(past_steps):
-            if step_result.success and step_result.result and len(step_result.result.strip()) > 10:
-                last_success_result = step_result.result.strip()
-                break
-    
-    # Incluir contexto de conversación y resultado exitoso previo si está disponible
+    # Incluir contexto de conversación si está disponible
     session_id = state.get("session_id")
     context_info = ""
     if session_id:
         context = memory.get_context_for_planning(session_id, max_messages=5)
         if context != "Esta es una nueva conversación.":
-            context_info += f"\n\nContexto de conversación:\n{context}"
-    if last_success_result:
-        context_info += f"\n\nÚltimo resultado exitoso del paso anterior:\n{last_success_result}"
-    else:
-        context_info += "\n\nNo hubo ningún resultado exitoso en el paso anterior. Si el paso depende de un resultado previo, repórtalo y no improvises."
-
+            context_info = f"\n\nContexto de conversación:\n{context}"
+    
     # Formatear la tarea considerando múltiples pasos
     if len(steps_to_execute) == 1:
         task_formatted = f"""Para el siguiente plan:

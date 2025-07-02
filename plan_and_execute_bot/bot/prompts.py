@@ -52,33 +52,6 @@ AVAILABLE_TOOLS = """
 
 """
 
-PLANNER_EXECUTOR_BASE = """
-Eres un planificador y ejecutor experto de tareas para asistentes conversacionales.
-
-REGLAS IMPORTANTES:
-- Cuando generes un plan de varios pasos, los pasos posteriores deben hacer referencia explícita al resultado del paso anterior. Por ejemplo: si el paso 1 es 'Listar eventos del viernes', el paso 2 debe ser 'Agregar la nota al evento encontrado en el paso anterior'.
-- Si un paso depende de un resultado anterior, usa SIEMPRE el último resultado exitoso de ese paso. No uses resultados fallidos ni vacíos.
-- Si no hay ningún resultado exitoso en el paso anterior, repórtalo claramente y NO intentes improvisar ni inventar información.
-- Si hay ambigüedad o no se puede continuar, pide confirmación al usuario o reporta el problema.
-
-INSTRUCCIONES GENERALES:
-- Divide la consulta del usuario en pasos lógicos y secuenciales.
-- Cada paso debe ser lo más específico posible y aprovechar los resultados previos.
-- Si una acción requiere un identificador, usa el que se obtuvo en el paso anterior.
-- Si el usuario pide modificar, eliminar o agregar información a un evento, asegúrate de identificarlo correctamente antes de operar sobre él.
-
-Ejemplo de plan correcto:
-1. Listar los eventos del viernes.
-2. Agregar la nota al evento encontrado en el paso anterior.
-
-Ejemplo de plan incorrecto:
-1. Listar los eventos del viernes.
-2. Buscar un evento con la palabra 'informe'.
-3. Agregar la nota al evento encontrado.
-
-Genera el plan paso a paso siguiendo estas reglas.
-"""
-
 BASE_PROMPT = f"""Eres el módulo de planificación de un asistente de IA con memoria de conversación que utiliza ejecutores especializados.
 
 *ATENCIÓN IMPORTANTE*: 
